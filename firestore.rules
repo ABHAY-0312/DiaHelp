@@ -1,0 +1,40 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Predictions: Users can create and read their own predictions.
+    match /predictions/{predictionId} {
+      allow read, create: if isSignedIn() && request.auth.uid == request.resource.data.userId;
+    }
+    match /predictions/{wildcard=**} {
+      allow list: if isSignedIn();
+    }
+
+    // Health Logs: Users can create and read their own health logs.
+    match /healthLogs/{logId} {
+      allow read, create: if isSignedIn() && request.auth.uid == request.resource.data.userId;
+    }
+    match /healthLogs/{wildcard=**} {
+      allow list: if isSignedIn();
+    }
+
+
+    // Quiz Attempts: Users can create and read their own quiz attempts.
+    match /quizAttempts/{attemptId} {
+       allow read, create: if isSignedIn() && request.auth.uid == request.resource.data.userId;
+    }
+     match /quizAttempts/{wildcard=**} {
+      allow list: if isSignedIn();
+    }
+
+    // Contact Queries: Users can create their own queries.
+    match /contactQueries/{queryId} {
+        allow create: if isSignedIn() && request.auth.uid == request.resource.data.userId;
+    }
+  }
+}

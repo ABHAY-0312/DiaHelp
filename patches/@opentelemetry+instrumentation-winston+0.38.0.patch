@@ -1,0 +1,18 @@
+diff --git a/node_modules/@opentelemetry/instrumentation-winston/build/src/instrumentation.js b/node_modules/@opentelemetry/instrumentation-winston/build/src/instrumentation.js
+index 9294154..a3c869a 100644
+--- a/node_modules/@opentelemetry/instrumentation-winston/build/src/instrumentation.js
++++ b/node_modules/@opentelemetry/instrumentation-winston/build/src/instrumentation.js
+@@ -41,7 +41,12 @@ class WinstonInstrumentation extends instrumentation_1.Instrumentation {
+         if (this._config.disableLogSending) {
+             return;
+         }
+-        const { PatchedWinstonTransport } = require('@opentelemetry/winston-transport');
++        let PatchedWinstonTransport;
++        try {
++            PatchedWinstonTransport = require('@opentelemetry/winston-transport').PatchedWinstonTransport;
++        } catch (e) {
++            return;
++        }
+         const transport = new PatchedWinstonTransport({
+             instrumentation: this,
+         });

@@ -13,7 +13,7 @@ interface DigitalTwinProps {
 }
 
 interface Scenario {
-  key: keyof HealthFormData;
+  key: keyof HealthFormData | 'lipids';
   title: string;
   description: string;
   icon: React.ReactNode;
@@ -50,7 +50,7 @@ const scenarios: Scenario[] = [
     improvement: (data) => ({ ...data, fastingGlucose: Math.max(90, data.fastingGlucose * 0.85) }),
   },
   {
-    key: 'triglycerides',
+    key: 'lipids',
     title: 'Improve Lipids',
     description: 'Lower Triglycerides by 20% and increase HDL by 10%.',
     icon: <Heart className="w-6 h-6 text-purple-500" />,
@@ -66,8 +66,11 @@ export function DigitalTwin({ currentResult, onCalculateRisk }: DigitalTwinProps
   
   const simulations = useMemo(() => {
     return scenarios.map(scenario => {
-      const improvedData = scenario.improvement(currentResult.formData);
-      const { riskScore: newRiskScore } = onCalculateRisk(improvedData);
+      const currentDataWithDefaults = { ...currentResult.formData };
+      const improvedData = scenario.improvement(currentDataWithDefaults);
+      const combinedData = { ...currentDataWithDefaults, ...improvedData };
+      const { riskScore: newRiskScore } = onCalculateRisk(combinedData);
+      
       return {
         ...scenario,
         newRiskScore: Math.round(newRiskScore),
@@ -101,7 +104,7 @@ export function DigitalTwin({ currentResult, onCalculateRisk }: DigitalTwinProps
                 <div className="text-3xl font-bold text-primary">{sim.newRiskScore}</div>
                 <div className={`flex items-center font-bold text-lg ${sim.change < 0 ? 'text-green-600' : 'text-red-600'}`}>
                   {sim.change < 0 ? <TrendingDown className="w-5 h-5 mr-1" /> : <TrendingUp className="w-5 h-5 mr-1" />}
-                  {sim.change}
+                  {sim.change > 0 ? `+${sim.change}`: sim.change}
                 </div>
               </div>
             </div>

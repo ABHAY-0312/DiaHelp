@@ -153,14 +153,16 @@ const ShapAnalysisChart = ({ shapValues }: { shapValues: { name: string; value: 
   );
 };
 
-const HealthTimeline = ({ result }: { result: AnalysisResult }) => {
+const HealthTimeline = ({ result, isPdfMode }: { result: AnalysisResult, isPdfMode?: boolean }) => {
     const [timelineData, setTimelineData] = useState<GenerateTimelineOutput | null>(null);
     const [isTimelineLoading, setIsTimelineLoading] = useState(false);
     const { toast } = useToast();
+    const hasFetched = useRef(false);
 
-    const handleGenerateTimeline = async () => {
+    const handleGenerateTimeline = useCallback(async () => {
         setIsTimelineLoading(true);
         setTimelineData(null);
+        hasFetched.current = true;
         try {
             const timelineInput: GenerateTimelineInput = {
                 riskScore: result.riskScore,
@@ -186,7 +188,7 @@ const HealthTimeline = ({ result }: { result: AnalysisResult }) => {
                 toast({
                     variant: "destructive",
                     title: "AI Service Rate Limited",
-                    description: "You've exceeded the daily usage limit for the AI service. Please try again tomorrow. For more information, visit ai.google.dev/gemini-api/docs/rate-limits.",
+                    description: "You've exceeded the daily usage limit for the AI service. Please try again tomorrow.",
                 });
             } else {
                 toast({ variant: "destructive", title: "Timeline Error", description: "Could not generate the health timeline. Please try again." });
@@ -194,9 +196,15 @@ const HealthTimeline = ({ result }: { result: AnalysisResult }) => {
         } finally {
             setIsTimelineLoading(false);
         }
-    }
+    }, [result, toast]);
 
-    if (!timelineData && !isTimelineLoading) {
+    useEffect(() => {
+        if (isPdfMode && !timelineData && !hasFetched.current) {
+            handleGenerateTimeline();
+        }
+    }, [isPdfMode, timelineData, handleGenerateTimeline]);
+
+    if (!isPdfMode && !timelineData && !isTimelineLoading) {
         return (
              <div className="text-center p-8 border-2 border-dashed rounded-lg">
                 <CalendarClock className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
@@ -217,10 +225,14 @@ const HealthTimeline = ({ result }: { result: AnalysisResult }) => {
             </div>
         )
     }
+    
+    if (!timelineData) {
+        return null; // Don't render anything if there's no data and not loading (e.g. for PDF mode initial render)
+    }
 
     return (
         <div className="space-y-6">
-            {timelineData?.timeline.map((event, index) => (
+            {timelineData.timeline.map((event, index) => (
                  <Alert key={index} className={cn(index === 0 && 'border-amber-400', index === 1 && 'border-orange-500', index === 2 && 'border-red-600')}>
                     <CalendarClock className="h-5 w-5" />
                     <AlertTitle className="font-bold text-lg">{event.timeframe}</AlertTitle>
@@ -236,19 +248,34 @@ const HealthTimeline = ({ result }: { result: AnalysisResult }) => {
     )
 }
 
+const getRiskCategory = (score: number) => {
+    if (score > 70) return "High Risk";
+    if (score > 40) return "Medium Risk";
+    return "Low Risk";
+}
 
-export function RiskAnalysis({ user, result, isLoading, onCalculateRisk }: RiskAnalysisProps) {
+const clinicalInputsConfig = [
+    { key: 'age', label: 'Age', unit: 'years', norm: 'N/A' },
+    { key: 'gender', label: 'Gender', unit: '', norm: 'N/A' },
+    { key: 'bmi', label: 'BMI', unit: '', norm: '18.5 - 24.9' },
+    { key: 'waistCircumference', label: 'Waist Circumference', unit: 'cm', norm: '< 94 (Male), < 80 (Female)' },
+    { key: 'fastingGlucose', label: 'Fasting Glucose', unit: 'mg/dL', norm: '70 - 100' },
+    { key: 'hba1c', label: 'HbA1c', unit: '%', norm: '< 5.7' },
+    { key: 'fastingInsulin', label: 'Fasting Insulin', unit: 'muU/mL', norm: '2.6 - 24.9' },
+    { key: 'triglycerides', label: 'Triglycerides', unit: 'mg/dL', norm: '< 150' },
+    { key: 'hdlCholesterol', label: 'HDL Cholesterol', unit: 'mg/dL', norm: '> 40 (Male), > 50 (Female)' },
+    { key: 'bloodPressure', label: 'Diastolic BP', unit: 'mmHg', norm: '< 80' },
+    { key: 'familyHistory', label: 'Family History', unit: '', norm: 'No' },
+    { key: 'sleepHours', label: 'Sleep Hours', unit: 'hrs/night', norm: '7 - 9' },
+    { key: 'physicalActivity', label: 'Physical Activity', unit: '', norm: 'Moderate to Active' },
+    { key: 'stressLevel', label: 'Stress Level', unit: '', norm: 'Low' },
+] as const;
+
+
+export function RiskAnalysis({ user, result, isLoading }: RiskAnalysisProps) {
   const [isDownloading, setIsDownloading] = useState(false);
-  const [watermarkText, setWatermarkText] = useState("");
   const printRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
-
-   useEffect(() => {
-    if (user) {
-      const date = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD format
-      setWatermarkText(`${user.displayName || user.email} - ${date}`);
-    }
-  }, [user]);
 
   const handleDownloadPdf = async () => {
     const reportElement = printRef.current;
@@ -267,7 +294,13 @@ export function RiskAnalysis({ user, result, isLoading, onCalculateRisk }: RiskA
         const canvas = await html2canvas(reportElement, {
             scale: 2, 
             useCORS: true,
-            backgroundColor: null,
+            logging: false,
+            onclone: (document) => {
+                const clonedReport = document.getElementById('pdf-report');
+                if (clonedReport) {
+                    clonedReport.style.display = 'block';
+                }
+            }
         });
 
         const imgData = canvas.toDataURL('image/png');
@@ -278,7 +311,7 @@ export function RiskAnalysis({ user, result, isLoading, onCalculateRisk }: RiskA
         });
 
         pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
-        pdf.save('DiaHelper-Report.pdf');
+        pdf.save(`DiaHelper-Report-${result?.patientName.replace(' ', '_')}.pdf`);
 
     } catch (error) {
         console.error("Error generating PDF:", error);
@@ -310,9 +343,9 @@ export function RiskAnalysis({ user, result, isLoading, onCalculateRisk }: RiskA
   }
 
   return (
+    <>
     <Card className="w-full h-full overflow-hidden shadow-lg border-primary/20">
-        <div ref={printRef} className="relative printable-area">
-            <Watermark text={watermarkText} />
+        <div className="printable-area">
             <CardHeader className="pb-4">
                 <CardTitle className="text-2xl">Risk Assessment for {result.patientName}</CardTitle>
                 <CardDescription>Generated on {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</CardDescription>
@@ -362,6 +395,118 @@ export function RiskAnalysis({ user, result, isLoading, onCalculateRisk }: RiskA
             </Button>
         </CardFooter>
     </Card>
+
+    {/* Hidden div for PDF generation */}
+    <div id="pdf-report" ref={printRef} className="absolute -left-[9999px] top-0 w-[800px] bg-background text-foreground p-8" style={{ display: 'none' }}>
+        {/* 1. Header */}
+        <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold text-primary">Diabetes Risk Assessment Report</h1>
+            <p className="text-lg">For: {result.patientName}</p>
+            <p className="text-sm text-muted-foreground">Generated on: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+        </div>
+
+        {/* 2. Summary Overview */}
+        <div className="mb-8 p-4 border rounded-lg">
+            <h2 className="text-2xl font-semibold mb-4">Summary Overview</h2>
+            <div className="grid grid-cols-3 gap-4 text-center">
+                <div>
+                    <p className="text-sm text-muted-foreground">Overall Risk Score</p>
+                    <p className="text-4xl font-bold text-primary">{result.riskScore}/100</p>
+                </div>
+                <div>
+                    <p className="text-sm text-muted-foreground">Category</p>
+                    <p className="text-2xl font-bold">{getRiskCategory(result.riskScore)}</p>
+                </div>
+                <div>
+                    <p className="text-sm text-muted-foreground">Key Risk Drivers</p>
+                    <ul className="text-sm font-semibold">{result.keyFactors.map(f => <li key={f.name}>{f.name}</li>)}</ul>
+                </div>
+            </div>
+        </div>
+        
+        {/* 3. Clinical Inputs */}
+        <div className="mb-8 page-break-before">
+             <h2 className="text-2xl font-semibold mb-4">Clinical Inputs Used</h2>
+             <div className="border rounded-lg overflow-hidden">
+                <table className="w-full text-sm">
+                    <thead className="bg-secondary">
+                        <tr>
+                            <th className="p-2 text-left font-semibold">Parameter</th>
+                            <th className="p-2 text-left font-semibold">Your Value</th>
+                            <th className="p-2 text-left font-semibold">Normal Range</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {clinicalInputsConfig.map(config => (
+                             <tr key={config.key} className="border-b last:border-none">
+                                <td className="p-2">{config.label}</td>
+                                <td className="p-2 font-mono capitalize">{result.formData[config.key]} {config.unit}</td>
+                                <td className="p-2 font-mono">{config.norm}</td>
+                             </tr>
+                        ))}
+                    </tbody>
+                </table>
+             </div>
+        </div>
+
+        {/* 4. AI Analysis */}
+        <div className="mb-8">
+            <h2 className="text-2xl font-semibold mb-4">AI Analysis Section</h2>
+            <div className="p-4 border rounded-lg mb-6 bg-secondary/30">
+                <h3 className="text-xl font-semibold mb-2">Risk Interpretation</h3>
+                <div className="prose prose-sm max-w-none">
+                    {result.report.split('\n\n').map((paragraph, index) => <p key={index}>{paragraph}</p>)}
+                </div>
+            </div>
+             <div className="p-4 border rounded-lg bg-secondary/30">
+                <h3 className="text-xl font-semibold mb-2">Feature Contribution Chart</h3>
+                <p className="text-xs text-muted-foreground mb-2">This chart shows how much each factor pushed your score up (red) or down (green).</p>
+                <ShapAnalysisChart shapValues={result.shapValues} />
+            </div>
+        </div>
+
+        {/* 5. Health Timeline */}
+        <div className="mb-8 page-break-before">
+            <h2 className="text-2xl font-semibold mb-4">Health Timeline Projection</h2>
+            <HealthTimeline result={result} isPdfMode={true} />
+        </div>
+
+        {/* 6. Recommendations */}
+         <div className="mb-8">
+            <h2 className="text-2xl font-semibold mb-4">Personalized Recommendations</h2>
+             <div className="p-4 border rounded-lg bg-secondary/30">
+                <p className="text-sm">Based on your profile, here are some actionable steps you can take to improve your health metrics and lower your risk. Check them off as you incorporate them into your routine.</p>
+                <div className="mt-4">
+                     <HealthSuggestions suggestions={result.healthSuggestions} />
+                </div>
+             </div>
+        </div>
+
+        {/* 7. Technical Appendix */}
+         <div className="mb-8 page-break-before">
+            <h2 className="text-2xl font-semibold mb-4">Technical Appendix</h2>
+             <div className="p-4 border rounded-lg text-xs space-y-4 bg-secondary/30">
+                <div>
+                    <h4 className="font-bold">Algorithm</h4>
+                    <p>The risk score is calculated using a logistic regression model, which simulates the predictive power of ensemble methods like XGBoost. It weighs various health markers based on their known impact on diabetes risk.</p>
+                </div>
+                <div>
+                    <h4 className="font-bold">Model Details</h4>
+                    <p>The model uses standardized inputs (Z-scores) derived from clinical norms to ensure all factors are compared on a similar scale. The final output is a probability score (0-100) representing the estimated risk.</p>
+                </div>
+                 <div>
+                    <h4 className="font-bold">Preprocessing</h4>
+                    <p>Categorical inputs like 'Family History' or 'Physical Activity' are converted into numerical values before being fed into the model. All inputs are validated to be within reasonable clinical ranges.</p>
+                </div>
+             </div>
+        </div>
+
+        {/* 8. Disclaimer */}
+        <div className="text-xs text-muted-foreground text-center pt-4 border-t">
+            <p><strong>Disclaimer:</strong> This is a simulated prediction for educational and motivational purposes only and is not a real medical diagnosis. The risk score is an estimate based on a statistical model and does not replace a professional medical evaluation. Please consult with a qualified healthcare provider to discuss your results and for any medical advice.</p>
+        </div>
+    </div>
+    </>
   );
 }
 
@@ -400,7 +545,3 @@ const LoadingSkeleton = () => (
       </CardFooter>
     </Card>
 )
-
-    
-
-    

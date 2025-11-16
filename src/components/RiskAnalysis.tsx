@@ -190,6 +190,12 @@ const HealthTimeline = ({ result, isPdfMode }: { result: AnalysisResult, isPdfMo
                     title: "AI Service Rate Limited",
                     description: "You've exceeded the daily usage limit for the AI service. Please try again tomorrow.",
                 });
+            } else if (errorMessage.includes("503") || errorMessage.toLowerCase().includes("overloaded")) {
+                toast({
+                    variant: "destructive",
+                    title: "AI Service Busy",
+                    description: "The timeline generator is currently experiencing high demand. Please try again in a moment.",
+                });
             } else {
                 toast({ variant: "destructive", title: "Timeline Error", description: "Could not generate the health timeline. Please try again." });
             }
@@ -545,5 +551,3 @@ const LoadingSkeleton = () => (
       </CardFooter>
     </Card>
 )
-
-    

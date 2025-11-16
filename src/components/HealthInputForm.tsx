@@ -12,22 +12,25 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Loader2, Stethoscope, Lock } from "lucide-react";
 import { useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+
 
 interface HealthInputFormProps {
   onSubmit: (data: HealthFormData) => void;
   isLoading: boolean;
 }
 
-const formFields: { name: keyof Omit<HealthFormData, 'patientName' | 'emergencyContactEmail'>; label: string; description: string }[] = [
+const formFields: { name: keyof Omit<HealthFormData, 'patientName' | 'emergencyContactEmail' | 'gender' | 'familyHistory' | 'physicalActivity' | 'stressLevel'>; label: string; description: string }[] = [
   { name: "age", label: "Age", description: "Your current age in years." },
-  { name: "pregnancies", label: "Pregnancies", description: "Number of times you have been pregnant." },
-  { name: "glucose", label: "Glucose", description: "Your blood sugar level, usually after fasting (in mg/dL)." },
-  { name: "bloodPressure", label: "Blood Pressure", description: "The lower number (diastolic) of your blood pressure reading." },
-  { name: "skinThickness", label: "Skin Thickness", description: "A measure of body fat on your arm, in millimeters. (Average is 20-30mm)" },
-  { name: "insulin", label: "Insulin", description: "Your 2-hour insulin test result (in mu U/ml). (Average is 80-150)" },
-  { name: "bmi", label: "BMI", description: "Your Body Mass Index. You can find a BMI calculator online." },
-  { name: "diabetesPedigreeFunction", label: "Family History", description: "A score indicating diabetes likelihood from family history. (0.5 is average)" },
-  { name: "sleepHours", label: "Avg. Sleep Hours", description: "The average number of hours you sleep per night."}
+  { name: "bmi", label: "BMI", description: "Your Body Mass Index. (e.g., 24.5)" },
+  { name: "waistCircumference", label: "Waist Circumference (cm)", description: "Measured at the narrowest point." },
+  { name: "fastingGlucose", label: "Fasting Glucose (mg/dL)", description: "Your blood sugar after an overnight fast." },
+  { name: "hba1c", label: "HbA1c (%)", description: "Your average blood sugar over 3 months." },
+  { name: "fastingInsulin", label: "Fasting Insulin (muU/mL)", description: "Your insulin level after a fast." },
+  { name: "triglycerides", label: "Triglycerides (mg/dL)", description: "A type of fat found in your blood." },
+  { name: "hdlCholesterol", label: "HDL Cholesterol (mg/dL)", description: "Your 'good' cholesterol level." },
+  { name: "bloodPressure", label: "Diastolic Blood Pressure", description: "The lower number of your BP reading." },
+  { name: "sleepHours", label: "Avg. Sleep Hours", description: "Average hours you sleep per night."}
 ];
 
 export function HealthInputForm({ onSubmit, isLoading }: HealthInputFormProps) {
@@ -38,14 +41,19 @@ export function HealthInputForm({ onSubmit, isLoading }: HealthInputFormProps) {
       patientName: "",
       emergencyContactEmail: "",
       age: undefined,
-      pregnancies: 0,
-      glucose: undefined,
-      bloodPressure: undefined,
-      skinThickness: 20,
-      insulin: 80,
+      gender: 'female',
       bmi: undefined,
-      diabetesPedigreeFunction: 0.5,
+      waistCircumference: undefined,
+      fastingGlucose: undefined,
+      hba1c: undefined,
+      fastingInsulin: undefined,
+      triglycerides: undefined,
+      hdlCholesterol: undefined,
+      bloodPressure: undefined,
+      familyHistory: 'no',
       sleepHours: 7,
+      physicalActivity: 'moderate',
+      stressLevel: 'medium',
     },
   });
 
@@ -112,6 +120,29 @@ export function HealthInputForm({ onSubmit, isLoading }: HealthInputFormProps) {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+               <FormField
+                  control={form.control}
+                  name="gender"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Gender</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select your gender" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="female">Female</SelectItem>
+                          <SelectItem value="male">Male</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormDescription className="text-xs">Assigned at birth, for risk calculation.</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
               {formFields.map(({ name, label, description }) => (
                 <FormField
                   key={name}
@@ -135,6 +166,66 @@ export function HealthInputForm({ onSubmit, isLoading }: HealthInputFormProps) {
                   )}
                 />
               ))}
+
+              <FormField
+                  control={form.control}
+                  name="familyHistory"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Family History of Diabetes</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                        <SelectContent>
+                          <SelectItem value="no">No</SelectItem>
+                          <SelectItem value="parent">Parent or Sibling</SelectItem>
+                          <SelectItem value="grandparent">Grandparent</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormDescription className="text-xs">Has anyone in your immediate family had diabetes?</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                 <FormField
+                  control={form.control}
+                  name="physicalActivity"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Physical Activity Level</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                        <SelectContent>
+                          <SelectItem value="sedentary">Sedentary (Little to no exercise)</SelectItem>
+                          <SelectItem value="light">Light (Walks, 1-2 days/week)</SelectItem>
+                          <SelectItem value="moderate">Moderate (3-5 days/week)</SelectItem>
+                          <SelectItem value="active">Active (Vigorous, 6-7 days/week)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                       <FormDescription className="text-xs">Your typical weekly activity.</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="stressLevel"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Average Stress Level</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                        <SelectContent>
+                          <SelectItem value="low">Low</SelectItem>
+                          <SelectItem value="medium">Medium</SelectItem>
+                          <SelectItem value="high">High</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormDescription className="text-xs">Your typical daily stress.</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
             </div>
 
             <Button type="submit" disabled={isLoading} size="lg" className="w-full font-bold text-base">

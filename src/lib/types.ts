@@ -23,15 +23,20 @@ export type SignupFormData = z.infer<typeof signupSchema>;
 export const healthFormSchema = z.object({
   patientName: z.string().optional(),
   emergencyContactEmail: z.string().email({ message: "Invalid email address."}).optional().or(z.literal('')),
-  age: z.coerce.number().min(1, { message: "Age must be a positive number." }).max(120),
-  pregnancies: z.coerce.number().min(0).max(20).default(0),
-  glucose: z.coerce.number().min(0, { message: "Glucose must be a positive number." }),
-  bloodPressure: z.coerce.number().min(0, { message: "Blood pressure must be a positive number." }),
-  skinThickness: z.coerce.number().min(0).max(99).default(20),
-  insulin: z.coerce.number().min(0).max(900).default(80),
+  age: z.coerce.number().min(1, "Age must be a positive number.").max(120),
+  gender: z.enum(['male', 'female']),
   bmi: z.coerce.number().min(10, "BMI seems too low.").max(70, "BMI seems too high."),
-  diabetesPedigreeFunction: z.coerce.number().min(0).max(3).default(0.5),
-  sleepHours: z.coerce.number().min(0, "Sleep must be positive.").max(24, "Cannot be more than 24 hours.").default(7),
+  waistCircumference: z.coerce.number().min(30, "Waist circumference seems too low.").max(300),
+  fastingGlucose: z.coerce.number().min(30, "Glucose seems too low.").max(700),
+  hba1c: z.coerce.number().min(1, "HbA1c seems too low.").max(25),
+  fastingInsulin: z.coerce.number().min(0).max(900),
+  triglycerides: z.coerce.number().min(10).max(1000),
+  hdlCholesterol: z.coerce.number().min(5).max(200),
+  bloodPressure: z.coerce.number().min(30).max(200),
+  familyHistory: z.enum(['no', 'grandparent', 'parent']),
+  sleepHours: z.coerce.number().min(0).max(24),
+  physicalActivity: z.enum(['sedentary', 'light', 'moderate', 'active']),
+  stressLevel: z.enum(['low', 'medium', 'high']),
 });
 
 export type HealthFormData = z.infer<typeof healthFormSchema>;

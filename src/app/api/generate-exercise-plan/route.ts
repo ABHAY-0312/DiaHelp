@@ -11,7 +11,7 @@ const GenerateExercisePlanInputSchema = z.object({
   age: z.number().describe('The age of the user.'),
   bmi: z.number().describe('The BMI (Body Mass Index) of the user.'),
   fitnessLevel: z
-    .enum(['beginner', 'intermediate', 'advanced'])
+    .enum(['sedentary', 'light', 'moderate', 'active'])
     .describe('The self-reported fitness level of the user.'),
 });
 export type GenerateExercisePlanInput = z.infer<
@@ -91,9 +91,9 @@ Create a 7-day exercise plan for a user with the following profile:
 - Fitness Level: ${input.fitnessLevel}
 
 The plan should be balanced, including a mix of cardiovascular exercise, strength training, and flexibility or rest days.
-- For 'beginner', focus on low-impact activities like walking, stretching, and bodyweight exercises.
-- For 'intermediate', introduce moderate-intensity activities like jogging, light weightlifting.
-- For 'advanced', suggest higher-intensity workouts.
+- For 'sedentary' or 'light', focus on low-impact activities like walking, stretching, and bodyweight exercises.
+- For 'moderate', introduce moderate-intensity activities like jogging, light weightlifting.
+- For 'active', suggest higher-intensity workouts.
 
 Create a plan for 5 active days and 2 rest/active recovery days.
 

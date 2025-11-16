@@ -13,7 +13,7 @@ const GenerateMetabolicAgeInputSchema = z.object({
   glucose: z.number().describe('The plasma glucose concentration of the user.'),
   sleepHours: z.number().describe('The average hours of sleep per night for the user.'),
   fitnessLevel: z
-    .enum(['beginner', 'intermediate', 'advanced'])
+    .enum(['sedentary', 'light', 'moderate', 'active'])
     .describe('The self-reported fitness level of the user.'),
 });
 export type GenerateMetabolicAgeInput = z.infer<
@@ -74,7 +74,7 @@ Analyze the following user data:
 Based on these factors, calculate a metabolic age.
 - A high BMI and high glucose will significantly increase metabolic age.
 - Good sleep (7-9 hours) and a higher fitness level will decrease metabolic age.
-- Start with the actual age and adjust it up or down based on how the user's metrics compare to healthy norms. For example, a BMI of 30 might add 5-7 years, while an 'advanced' fitness level might subtract 3-5 years.
+- Start with the actual age and adjust it up or down based on how the user's metrics compare to healthy norms. For example, a BMI of 30 might add 5-7 years, while an 'active' fitness level might subtract 3-5 years.
 
 After calculating the metabolic age, provide a brief, encouraging explanation for the result. Frame it positively, focusing on what the user can do to improve or maintain their health. For example, if the metabolic age is high, say something like "Your metabolic age is estimated to be X. It's a bit higher than your actual age, mainly due to BMI, but improving this with regular exercise can make a big difference!". If it's low, congratulate them.
 `;

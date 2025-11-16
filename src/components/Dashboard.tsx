@@ -38,75 +38,51 @@ import type { GenerateReportInput, GenerateReportOutput } from "@/app/api/genera
 type View = "summary" | "dashboard" | "history" | "mealAnalyzer" | "healthLog" | "progress" | "datasetAnalyzer" | "nutritionHub" | "wellnessHub" | "researchHub" | "literacyHub" | "careFinder" | "contact";
 
 const calculateRisk = (data: Partial<HealthFormData>): { riskScore: number; shapValues: { name: string; value: number }[] } => {
-    const { age = 40, bmi = 25, glucose = 100, bloodPressure = 80, pregnancies = 0, skinThickness = 20, insulin = 80, diabetesPedigreeFunction = 0.4, sleepHours = 7 } = data;
-    
-    if (!data.age || !data.bmi || !data.glucose || !data.bloodPressure) {
+    const { age = 40, gender = 'female', bmi = 25, waistCircumference = 90, fastingGlucose = 100, hba1c = 5.5, fastingInsulin = 10, triglycerides = 150, hdlCholesterol = 50, bloodPressure = 80, familyHistory = 'no', sleepHours = 7, physicalActivity = 'moderate', stressLevel = 'medium' } = data;
+
+    if (!data.age || !data.bmi || !data.fastingGlucose || !data.hba1c) {
         return { riskScore: 0, shapValues: [] };
     }
-
+    
     const sigmoid = (x: number) => 1 / (1 + Math.exp(-x));
 
     const weights = {
-        base: -5.5,
-        glucose: 3.5,
-        bmi: 3.2,
-        age: 2.5,
-        diabetesPedigreeFunction: 2.0,
-        sleepQuality: 1.5,
-        bloodPressure: 1.2,
-        pregnancies: 0.7,
-        insulin: 0.5,
-        skinThickness: 0.3,
-        glucose_bmi: 2.8,
-        age_glucose: 1.8,
-        bp_bmi: 1.0,
-        age_squared: 0.8,
-        glucose_squared: 1.0,
+        base: -8.0, hba1c: 4.5, fastingGlucose: 3.0, age: 2.8, bmi: 2.5, waistCircumference: 2.2, triglycerides: 1.8,
+        hdlCholesterol: -1.5, bloodPressure: 1.2, familyHistory: 1.5, fastingInsulin: 1.0, physicalActivity: -1.2,
+        stressLevel: 0.8, sleepHours: -0.6, gender: 0.4
     };
-    
+
     const norms = {
-        glucose: { mean: 105, std: 30 },
-        bmi: { mean: 28, std: 6 },
-        age: { mean: 45, std: 18 },
-        pedigree: { mean: 0.5, std: 0.4 },
-        bloodPressure: { mean: 85, std: 20 },
-        pregnancies: { mean: 3, std: 3 },
-        skinThickness: { mean: 25, std: 12 },
-        insulin: { mean: 100, std: 60 },
-        sleepHours: { mean: 7, std: 1.5 },
+        hba1c: { mean: 5.8, std: 1.2 }, glucose: { mean: 105, std: 30 }, age: { mean: 45, std: 18 }, bmi: { mean: 28, std: 6 },
+        waist: { mean: 95, std: 15 }, trig: { mean: 160, std: 50 }, hdl: { mean: 45, std: 12 }, bp: { mean: 85, std: 20 },
+        insulin: { mean: 15, std: 10 }, sleep: { mean: 7, std: 1.5 }
     };
-
-    const standardize = (val: number, mean: number, std: number) => (val - mean) / std;
-
-    const stdGlucose = standardize(glucose, norms.glucose.mean, norms.glucose.std);
-    const stdBmi = standardize(bmi, norms.bmi.mean, norms.bmi.std);
-    const stdAge = standardize(age, norms.age.mean, norms.age.std);
-    const stdPedigree = standardize(diabetesPedigreeFunction, norms.pedigree.mean, norms.pedigree.std);
-    const stdBp = standardize(bloodPressure, norms.bloodPressure.mean, norms.bloodPressure.std);
-    const stdPregnancies = standardize(pregnancies, norms.pregnancies.mean, norms.pregnancies.std);
-    const stdSkinThickness = standardize(skinThickness, norms.skinThickness.mean, norms.skinThickness.std);
-    const stdInsulin = standardize(insulin, norms.insulin.mean, norms.insulin.std);
     
-    const sleepDeviation = Math.abs(sleepHours - norms.sleepHours.mean);
-    const sleepImpact = (sleepDeviation / norms.sleepHours.std);
+    const standardize = (val: number, { mean, std }: { mean: number, std: number }) => (val - mean) / std;
+
+    const familyHistoryImpact = familyHistory === 'parent' ? 1.0 : familyHistory === 'grandparent' ? 0.5 : 0;
+    const activityImpact = physicalActivity === 'sedentary' ? 1.0 : physicalActivity === 'light' ? 0.3 : physicalActivity === 'moderate' ? -0.5 : -1.0;
+    const stressImpact = stressLevel === 'high' ? 1.0 : stressLevel === 'medium' ? 0.2 : -0.8;
+    const genderImpact = gender === 'male' ? 1.0 : 0;
+    const sleepImpact = standardize(sleepHours, norms.sleep);
 
     const shapValues: { name: string; value: number }[] = [];
-    shapValues.push({ name: 'Glucose', value: stdGlucose * weights.glucose + Math.pow(stdGlucose, 2) * weights.glucose_squared });
-    shapValues.push({ name: 'BMI', value: stdBmi * weights.bmi });
-    shapValues.push({ name: 'Age', value: stdAge * weights.age + Math.pow(stdAge, 2) * weights.age_squared });
-    shapValues.push({ name: 'Sleep Quality', value: sleepImpact * weights.sleepQuality });
-    shapValues.push({ name: 'Family History', value: stdPedigree * weights.diabetesPedigreeFunction });
-    shapValues.push({ name: 'Blood Pressure', value: stdBp * weights.bloodPressure });
-    shapValues.push({ name: 'Pregnancies', value: stdPregnancies * weights.pregnancies });
-    shapValues.push({ name: 'Insulin', value: stdInsulin * weights.insulin});
-    shapValues.push({ name: 'Skin Thickness', value: stdSkinThickness * weights.skinThickness });
-
-    shapValues.push({ name: 'Glucose x BMI', value: stdGlucose * stdBmi * weights.glucose_bmi });
-    shapValues.push({ name: 'Age x Glucose', value: stdAge * stdGlucose * weights.age_glucose });
-    shapValues.push({ name: 'BP x BMI', value: stdBp * stdBmi * weights.bp_bmi });
+    shapValues.push({ name: 'HbA1c', value: standardize(hba1c, norms.hba1c) * weights.hba1c });
+    shapValues.push({ name: 'Fasting Glucose', value: standardize(fastingGlucose, norms.glucose) * weights.fastingGlucose });
+    shapValues.push({ name: 'Age', value: standardize(age, norms.age) * weights.age });
+    shapValues.push({ name: 'BMI', value: standardize(bmi, norms.bmi) * weights.bmi });
+    shapValues.push({ name: 'Waist Circumference', value: standardize(waistCircumference, norms.waist) * weights.waistCircumference });
+    shapValues.push({ name: 'Triglycerides', value: standardize(triglycerides, norms.trig) * weights.triglycerides });
+    shapValues.push({ name: 'HDL Cholesterol', value: standardize(hdlCholesterol, norms.hdl) * weights.hdlCholesterol });
+    shapValues.push({ name: 'Blood Pressure', value: standardize(bloodPressure, norms.bp) * weights.bloodPressure });
+    shapValues.push({ name: 'Fasting Insulin', value: standardize(fastingInsulin, norms.insulin) * weights.fastingInsulin });
+    shapValues.push({ name: 'Family History', value: familyHistoryImpact * weights.familyHistory });
+    shapValues.push({ name: 'Physical Activity', value: activityImpact * weights.physicalActivity });
+    shapValues.push({ name: 'Stress Level', value: stressImpact * weights.stressLevel });
+    shapValues.push({ name: 'Sleep Hours', value: sleepImpact * weights.sleepHours });
+    shapValues.push({ name: 'Gender', value: genderImpact * weights.gender });
 
     const logOdds = weights.base + shapValues.reduce((acc, curr) => acc + curr.value, 0);
-
     const score = sigmoid(logOdds) * 100;
     
     shapValues.unshift({ name: 'Baseline', value: weights.base });
@@ -209,7 +185,7 @@ export default function Dashboard() {
     const { riskScore, shapValues } = calculateRisk(data);
     const confidenceScore = Math.round(85 + (Math.abs(riskScore - 50) / 50) * 15);
     const keyFactors = getKeyFactors(shapValues);
-    const healthSuggestions = getHealthSuggestions(keyFactors);
+    const healthSuggestions = getHealthSuggestions(keyFactors, data);
 
     try {
       const reportInput: GenerateReportInput = {
@@ -277,33 +253,33 @@ export default function Dashboard() {
   
   const getKeyFactors = (shapValues: { name: string; value: number }[]): { name: string; value: number }[] => {
     return shapValues
-        .filter(f => f.name !== 'Baseline' && !f.name.includes('x')) 
-        .filter(f => f.value > 0)
-        .sort((a, b) => b.value - a.value)
+        .filter(f => f.name !== 'Baseline')
+        .sort((a, b) => Math.abs(b.value) - Math.abs(a.value))
         .slice(0, 3)
         .map(f => ({ name: f.name, value: f.value }));
   };
 
-  const getHealthSuggestions = (keyFactors: { name: string; value: number }[]): string[] => {
+  const getHealthSuggestions = (keyFactors: { name: string; value: number }[], data: HealthFormData): string[] => {
     const suggestions: string[] = ["Engage in at least 30 minutes of moderate exercise most days of the week."];
     const factorNames = keyFactors.map(f => f.name);
     
-    if (factorNames.includes("Glucose")) {
+    if (factorNames.includes("HbA1c") || factorNames.includes("Fasting Glucose")) {
         suggestions.push("Monitor carbohydrate intake and choose whole grains over refined carbs.");
     }
-    if (factorNames.includes("BMI")) {
+    if (factorNames.includes("BMI") || factorNames.includes("Waist Circumference")) {
         suggestions.push("Focus on a balanced diet with plenty of fruits, vegetables, and lean protein to manage weight.");
     }
     if (factorNames.includes("Blood Pressure")) {
         suggestions.push("Reduce sodium intake and manage stress through techniques like meditation or yoga.");
     }
-    if (factorNames.includes("Sleep Quality")) {
+    if (factorNames.includes("Sleep Hours")) {
         suggestions.push("Aim for 7-8 hours of consistent, quality sleep per night and establish a relaxing bedtime routine.");
     }
-    if (suggestions.length === 1) { 
-        suggestions.push("Maintain a balanced diet and regular check-ups with your doctor.");
+    if (factorNames.includes("Triglycerides") || factorNames.includes("HDL Cholesterol")) {
+        suggestions.push("Incorporate healthy fats like avocados, nuts, and olive oil into your diet.");
     }
-    return suggestions;
+
+    return suggestions.slice(0, 3);
   };
 
   const getInitials = (name: string | null | undefined) => {

@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState } from 'react';
@@ -27,7 +28,7 @@ interface WellnessHubProps {
 }
 
 export function WellnessHub({ latestResult }: WellnessHubProps) {
-  const [fitnessLevel, setFitnessLevel] = useState<'beginner' | 'intermediate' | 'advanced'>('beginner');
+  const [fitnessLevel, setFitnessLevel] = useState<'sedentary' | 'light' | 'moderate' | 'active'>('moderate');
 
   return (
     <div className="space-y-8">
@@ -42,8 +43,8 @@ export function WellnessHub({ latestResult }: WellnessHubProps) {
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
         <div className="space-y-8">
-            <ExercisePlanGenerator latestResult={latestResult} fitnessLevel={fitnessLevel} setFitnessLevel={setFitnessLevel} />
-            <MetabolicAgeCalculator latestResult={latestResult} fitnessLevel={fitnessLevel} />
+            <ExercisePlanGenerator latestResult={latestResult} fitnessLevel={latestResult?.formData.physicalActivity || 'moderate'} setFitnessLevel={() => {}} />
+            <MetabolicAgeCalculator latestResult={latestResult} />
         </div>
         <HealthAssistant />
       </div>
@@ -53,11 +54,11 @@ export function WellnessHub({ latestResult }: WellnessHubProps) {
 
 interface ExercisePlanGeneratorProps {
     latestResult: AnalysisResult | null;
-    fitnessLevel: 'beginner' | 'intermediate' | 'advanced';
-    setFitnessLevel: (level: 'beginner' | 'intermediate' | 'advanced') => void;
+    fitnessLevel: 'sedentary' | 'light' | 'moderate' | 'active';
+    setFitnessLevel: (level: 'sedentary' | 'light' | 'moderate' | 'active') => void;
 }
 
-function ExercisePlanGenerator({ latestResult, fitnessLevel, setFitnessLevel }: ExercisePlanGeneratorProps) {
+function ExercisePlanGenerator({ latestResult, fitnessLevel }: ExercisePlanGeneratorProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [exercisePlan, setExercisePlan] = useState<GenerateExercisePlanOutput | null>(null);
   const { toast } = useToast();
@@ -77,7 +78,7 @@ function ExercisePlanGenerator({ latestResult, fitnessLevel, setFitnessLevel }: 
       const planInput: GenerateExercisePlanInput = {
         age: latestResult.formData.age,
         bmi: latestResult.formData.bmi,
-        fitnessLevel,
+        fitnessLevel: latestResult.formData.physicalActivity,
       };
 
       const response = await fetch('/api/generate-exercise-plan', {
@@ -146,17 +147,8 @@ function ExercisePlanGenerator({ latestResult, fitnessLevel, setFitnessLevel }: 
       </CardHeader>
       <CardContent className="space-y-4">
         <div>
-          <Label htmlFor="fitness-level">Select Your Fitness Level</Label>
-           <Select onValueChange={(value: any) => setFitnessLevel(value)} defaultValue={fitnessLevel}>
-              <SelectTrigger id="fitness-level">
-                <SelectValue placeholder="Select level" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="beginner">Beginner</SelectItem>
-                <SelectItem value="intermediate">Intermediate</SelectItem>
-                <SelectItem value="advanced">Advanced</SelectItem>
-              </SelectContent>
-            </Select>
+          <Label htmlFor="fitness-level">Your Fitness Level (from health profile)</Label>
+            <Input id="fitness-level" value={fitnessLevel} disabled className="capitalize" />
         </div>
         <Button onClick={handleGeneratePlan} disabled={isLoading || !latestResult} className="w-full">
           {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
@@ -192,7 +184,7 @@ function ExercisePlanGenerator({ latestResult, fitnessLevel, setFitnessLevel }: 
   );
 }
 
-function MetabolicAgeCalculator({ latestResult, fitnessLevel }: { latestResult: AnalysisResult | null, fitnessLevel: 'beginner' | 'intermediate' | 'advanced' }) {
+function MetabolicAgeCalculator({ latestResult }: { latestResult: AnalysisResult | null }) {
     const [isLoading, setIsLoading] = useState(false);
     const [metabolicAgeResult, setMetabolicAgeResult] = useState<GenerateMetabolicAgeOutput | null>(null);
     const { toast } = useToast();
@@ -212,9 +204,9 @@ function MetabolicAgeCalculator({ latestResult, fitnessLevel }: { latestResult: 
             const metabolicAgeInput: GenerateMetabolicAgeInput = {
                 actualAge: latestResult.formData.age,
                 bmi: latestResult.formData.bmi,
-                glucose: latestResult.formData.glucose,
-                sleepHours: latestResult.formData.sleepHours || 7,
-                fitnessLevel: fitnessLevel,
+                glucose: latestResult.formData.fastingGlucose,
+                sleepHours: latestResult.formData.sleepHours,
+                fitnessLevel: latestResult.formData.physicalActivity,
             };
 
             const response = await fetch('/api/generate-metabolic-age', {

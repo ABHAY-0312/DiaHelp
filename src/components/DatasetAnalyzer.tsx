@@ -18,7 +18,7 @@ interface DatasetAnalyzerProps {
     onCalculateRisk: (data: Partial<HealthFormData>) => { riskScore: number; shapValues: { name: string; value: number }[] };
 }
 
-const requiredColumns = ["age", "glucose", "bmi", "bloodPressure"];
+const requiredColumns = ["age", "gender", "bmi", "fastingGlucose", "hba1c"];
 
 const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
@@ -27,7 +27,7 @@ const CustomTooltip = ({ active, payload }: any) => {
             <div className="p-2 bg-background border border-border rounded-lg shadow-lg text-sm">
                 <p className="font-bold text-primary">{`Risk Score: ${Math.round(data.riskScore)}`}</p>
                 <p>{`Age: ${data.age}`}</p>
-                <p>{`Glucose: ${data.glucose}`}</p>
+                <p>{`Glucose: ${data.fastingGlucose}`}</p>
                 <p>{`BMI: ${data.bmi}`}</p>
             </div>
         );
@@ -80,7 +80,7 @@ export function DatasetAnalyzer({ onCalculateRisk }: DatasetAnalyzerProps) {
   const [riskRange, setRiskRange] = useState<[number, number]>([0, 100]);
   const [ageRange, setAgeRange] = useState<[number, number]>([0, 120]);
   const [bmiRange, setBmiRange] = useState<[number, number]>([0, 70]);
-  const [glucoseRange, setGlucoseRange] = useState<[number, number]>([0, 300]);
+  const [glucoseRange, setGlucoseRange] = useState<[number, number]>([0, 700]);
 
   const { toast } = useToast();
 
@@ -123,7 +123,7 @@ export function DatasetAnalyzer({ onCalculateRisk }: DatasetAnalyzerProps) {
 
         const headers = meta.fields;
         if (!headers || !requiredColumns.every(col => headers.includes(col))) {
-            toast({ variant: "destructive", title: "Invalid CSV Format", description: `CSV must contain the following columns: ${requiredColumns.join(', ')}.`});
+            toast({ variant: "destructive", title: "Invalid CSV Format", description: `CSV must contain at least the following columns: ${requiredColumns.join(', ')}.`});
             setIsLoading(false);
             return;
         }
@@ -140,7 +140,7 @@ export function DatasetAnalyzer({ onCalculateRisk }: DatasetAnalyzerProps) {
                 const { riskScore, shapValues } = onCalculateRisk(parsedRow);
                 return { 
                     riskScore, 
-                    glucose: parsedRow.glucose || 0, 
+                    fastingGlucose: parsedRow.fastingGlucose || 0, 
                     bmi: parsedRow.bmi || 0, 
                     age: parsedRow.age || 0,
                     shapValues
@@ -175,7 +175,7 @@ export function DatasetAnalyzer({ onCalculateRisk }: DatasetAnalyzerProps) {
         r.riskScore >= riskRange[0] && r.riskScore <= riskRange[1] &&
         r.age >= ageRange[0] && r.age <= ageRange[1] &&
         r.bmi >= bmiRange[0] && r.bmi <= bmiRange[1] &&
-        r.glucose >= glucoseRange[0] && r.glucose <= glucoseRange[1]
+        r.fastingGlucose >= glucoseRange[0] && r.fastingGlucose <= glucoseRange[1]
     );
   }, [results, riskRange, ageRange, bmiRange, glucoseRange]);
 
@@ -211,7 +211,7 @@ export function DatasetAnalyzer({ onCalculateRisk }: DatasetAnalyzerProps) {
       setRiskRange([0, 100]);
       setAgeRange([0, 120]);
       setBmiRange([0, 70]);
-      setGlucoseRange([0, 300]);
+      setGlucoseRange([0, 700]);
   }
 
   const PIE_COLORS = ["hsl(var(--primary))", "hsl(var(--accent))", "#3b82f6", "#f97316", "#10b981"];
@@ -269,7 +269,7 @@ export function DatasetAnalyzer({ onCalculateRisk }: DatasetAnalyzerProps) {
                         <FilterSlider label="Risk Score" range={riskRange} setRange={setRiskRange} min={0} max={100} step={1} />
                         <FilterSlider label="Age" range={ageRange} setRange={setAgeRange} min={0} max={120} step={1} />
                         <FilterSlider label="BMI" range={bmiRange} setRange={setBmiRange} min={0} max={70} step={1} />
-                        <FilterSlider label="Glucose" range={glucoseRange} setRange={setGlucoseRange} min={0} max={300} step={5} />
+                        <FilterSlider label="Glucose" range={glucoseRange} setRange={setGlucoseRange} min={0} max={700} step={5} />
                      </div>
                 </Card>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
@@ -297,7 +297,7 @@ export function DatasetAnalyzer({ onCalculateRisk }: DatasetAnalyzerProps) {
                     <div className='grid grid-cols-1 xl:grid-cols-2 gap-8'>
                         <div>
                              <h4 className="text-lg font-semibold mb-2 text-center">Glucose vs. Risk Score</h4>
-                             <RiskScatterPlot data={filteredResults} xKey="glucose" yKey="riskScore" name="Glucose vs. Risk" />
+                             <RiskScatterPlot data={filteredResults} xKey="fastingGlucose" yKey="riskScore" name="Glucose vs. Risk" />
                         </div>
                          <div>
                             <h4 className="text-lg font-semibold mb-2 text-center">BMI vs. Risk Score</h4>

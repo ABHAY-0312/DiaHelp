@@ -35,8 +35,6 @@ import ContactUsPage from "./ContactUsPage";
 import { Footer } from "./Footer";
 import type { GenerateReportInput, GenerateReportOutput } from "@/app/api/generate-report/route";
 
-type View = "summary" | "dashboard" | "history" | "mealAnalyzer" | "healthLog" | "progress" | "datasetAnalyzer" | "nutritionHub" | "wellnessHub" | "researchHub" | "literacyHub" | "careFinder" | "contact";
-
 const calculateRisk = (data: Partial<HealthFormData>): { riskScore: number; shapValues: { name: string; value: number }[] } => {
     const { age = 40, gender = 'female', bmi = 25, waistCircumference = 90, fastingGlucose = 100, hba1c = 5.5, fastingInsulin = 10, triglycerides = 150, hdlCholesterol = 50, bloodPressure = 80, familyHistory = 'no', sleepHours = 7, physicalActivity = 'moderate', stressLevel = 'medium' } = data;
 
@@ -47,22 +45,22 @@ const calculateRisk = (data: Partial<HealthFormData>): { riskScore: number; shap
     const sigmoid = (x: number) => 1 / (1 + Math.exp(-x));
 
     const weights = {
-        base: -8.0, hba1c: 4.5, fastingGlucose: 3.0, age: 2.8, bmi: 2.5, waistCircumference: 2.2, triglycerides: 1.8,
-        hdlCholesterol: -1.5, bloodPressure: 1.2, familyHistory: 1.5, fastingInsulin: 1.0, physicalActivity: -1.2,
-        stressLevel: 0.8, sleepHours: -0.6, gender: 0.4
+        base: -8.5, hba1c: 4.8, fastingGlucose: 3.2, age: 2.9, bmi: 2.6, waistCircumference: 2.3, triglycerides: 2.0,
+        hdlCholesterol: -1.8, bloodPressure: 1.4, familyHistory: 1.7, fastingInsulin: 1.2, physicalActivity: -1.4,
+        stressLevel: 0.9, sleepHours: -0.7, gender: 0.5
     };
 
     const norms = {
-        hba1c: { mean: 5.8, std: 1.2 }, glucose: { mean: 105, std: 30 }, age: { mean: 45, std: 18 }, bmi: { mean: 28, std: 6 },
-        waist: { mean: 95, std: 15 }, trig: { mean: 160, std: 50 }, hdl: { mean: 45, std: 12 }, bp: { mean: 85, std: 20 },
-        insulin: { mean: 15, std: 10 }, sleep: { mean: 7, std: 1.5 }
+        hba1c: { mean: 5.7, std: 1.0 }, glucose: { mean: 100, std: 25 }, age: { mean: 50, std: 15 }, bmi: { mean: 27.5, std: 5 },
+        waist: { mean: 98, std: 12 }, trig: { mean: 150, std: 40 }, hdl: { mean: 50, std: 10 }, bp: { mean: 80, std: 15 },
+        insulin: { mean: 12, std: 8 }, sleep: { mean: 7.5, std: 1 }
     };
     
     const standardize = (val: number, { mean, std }: { mean: number, std: number }) => (val - mean) / std;
 
     const familyHistoryImpact = familyHistory === 'parent' ? 1.0 : familyHistory === 'grandparent' ? 0.5 : 0;
-    const activityImpact = physicalActivity === 'sedentary' ? 1.0 : physicalActivity === 'light' ? 0.3 : physicalActivity === 'moderate' ? -0.5 : -1.0;
-    const stressImpact = stressLevel === 'high' ? 1.0 : stressLevel === 'medium' ? 0.2 : -0.8;
+    const activityImpact = physicalActivity === 'sedentary' ? 1.0 : physicalActivity === 'light' ? 0.4 : physicalActivity === 'moderate' ? -0.6 : -1.2;
+    const stressImpact = stressLevel === 'high' ? 1.0 : stressLevel === 'medium' ? 0.3 : -0.7;
     const genderImpact = gender === 'male' ? 1.0 : 0;
     const sleepImpact = standardize(sleepHours, norms.sleep);
 

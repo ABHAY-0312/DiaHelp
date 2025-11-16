@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import type { AnalysisResult } from "@/lib/types";
@@ -7,7 +6,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Skeleton } from "@/components/ui/skeleton";
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend, Cell, CartesianGrid } from "recharts";
 import { Button } from "./ui/button";
-import { Download, FileText, Bot, MessageSquare, Activity, ArrowDown, ArrowUp, CalendarClock, Loader2 } from "lucide-react";
+import { Download, FileText, Bot, MessageSquare, Activity, ArrowDown, ArrowUp, CalendarClock, Loader2, UserCheck } from "lucide-react";
 import { Chatbot } from "./Chatbot";
 import { Checkbox } from "./ui/checkbox";
 import { Label } from "./ui/label";
@@ -20,12 +19,14 @@ import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import type { User } from "firebase/auth";
 import type { GenerateTimelineOutput, GenerateTimelineInput } from "@/app/api/generate-timeline/route";
+import { DigitalTwin } from "./DigitalTwin";
 
 
 interface RiskAnalysisProps {
   user: User | null;
   result: AnalysisResult | null;
   isLoading: boolean;
+  onCalculateRisk: (data: any) => { riskScore: number; shapValues: { name: string; value: number }[] };
 }
 
 const Watermark = ({ text }: { text: string }) => {
@@ -237,7 +238,7 @@ const HealthTimeline = ({ result }: { result: AnalysisResult }) => {
 }
 
 
-export function RiskAnalysis({ user, result, isLoading }: RiskAnalysisProps) {
+export function RiskAnalysis({ user, result, isLoading, onCalculateRisk }: RiskAnalysisProps) {
   const [isDownloading, setIsDownloading] = useState(false);
   const [watermarkText, setWatermarkText] = useState("");
   const printRef = useRef<HTMLDivElement>(null);
@@ -330,9 +331,10 @@ export function RiskAnalysis({ user, result, isLoading }: RiskAnalysisProps) {
                 </div>
                 
                 <Tabs defaultValue="report" className="w-full no-print">
-                    <TabsList className="grid w-full h-auto grid-cols-2 md:grid-cols-4">
+                    <TabsList className="grid w-full h-auto grid-cols-2 md:grid-cols-5">
                         <TabsTrigger value="report"><Bot className="mr-2 h-4 w-4"/> AI Report</TabsTrigger>
                         <TabsTrigger value="suggestions"><Activity className="mr-2 h-4 w-4"/> Suggestions</TabsTrigger>
+                        <TabsTrigger value="digitalTwin"><UserCheck className="mr-2 h-4 w-4"/> Digital Twin</TabsTrigger>
                          <TabsTrigger value="timeline"><CalendarClock className="mr-2 h-4 w-4"/> Timeline</TabsTrigger>
                         <TabsTrigger value="chat"><MessageSquare className="mr-2 h-4 w-4"/> Chat</TabsTrigger>
                     </TabsList>
@@ -345,6 +347,12 @@ export function RiskAnalysis({ user, result, isLoading }: RiskAnalysisProps) {
                     </TabsContent>
                     <TabsContent value="suggestions" className="mt-4">
                          <HealthSuggestions suggestions={result.healthSuggestions} />
+                    </TabsContent>
+                     <TabsContent value="digitalTwin" className="mt-4">
+                        <DigitalTwin
+                          currentResult={result}
+                          onCalculateRisk={onCalculateRisk}
+                        />
                     </TabsContent>
                     <TabsContent value="timeline" className="mt-4">
                          <HealthTimeline result={result} />
@@ -400,3 +408,5 @@ const LoadingSkeleton = () => (
       </CardFooter>
     </Card>
 )
+
+    

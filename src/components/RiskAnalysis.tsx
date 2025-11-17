@@ -397,8 +397,8 @@ export function RiskAnalysis({ user, result, isLoading }: RiskAnalysisProps) {
         return result.createdAt;
     }
     // Firestore Timestamp
-    if (result.createdAt && typeof result.createdAt.seconds === 'number') {
-        return result.createdAt.toDate();
+    if (result.createdAt && typeof (result.createdAt as any).seconds === 'number') {
+        return (result.createdAt as any).toDate();
     }
     // Fallback to now if something is wrong
     return new Date();
@@ -433,11 +433,9 @@ export function RiskAnalysis({ user, result, isLoading }: RiskAnalysisProps) {
                     <TabsTrigger value="chat"><MessageSquare className="mr-2 h-4 w-4"/> Chat</TabsTrigger>
                 </TabsList>
                 <TabsContent value="report" className="mt-4">
-                    <div className="p-5 border rounded-xl bg-secondary/50 prose prose-base max-w-none text-foreground prose-p:text-foreground prose-strong:text-foreground">
-                        {result.report.split('\n\n').map((paragraph, index) => (
-                            <p key={index}>{paragraph}</p>
-                        ))}
-                    </div>
+                    <div className="p-5 border rounded-xl bg-secondary/50 prose prose-base max-w-none text-foreground prose-p:text-foreground prose-strong:text-foreground"
+                         dangerouslySetInnerHTML={{ __html: result.report.replace(/\n\n/g, '<br/><br/>') }}
+                    />
                 </TabsContent>
                 <TabsContent value="suggestions" className="mt-4">
                      <HealthSuggestions suggestions={result.healthSuggestions} />
@@ -517,9 +515,7 @@ export function RiskAnalysis({ user, result, isLoading }: RiskAnalysisProps) {
                 <h2 className="text-2xl font-semibold mb-4">AI Analysis Section</h2>
                 <div className="p-4 border rounded-lg mb-6 bg-secondary/30">
                     <h3 className="text-xl font-semibold mb-2">Risk Interpretation</h3>
-                    <div className="prose prose-sm max-w-none">
-                        {result.report.split('\n\n').map((paragraph, index) => <p key={index}>{paragraph}</p>)}
-                    </div>
+                    <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: result.report.replace(/\n\n/g, '<br/><br/>') }} />
                 </div>
                 <div className="p-4 border rounded-lg bg-secondary/30">
                     <h3 className="text-xl font-semibold mb-2">Feature Contribution Chart</h3>

@@ -46,7 +46,11 @@ ${input.healthSuggestions.map(hs => `- ${hs}`).join('\n')}
 Keep the summary concise and positive. End by reminding the user to consult a healthcare professional.`;
 
     const result = await model.generateContent(prompt);
-    const responseText = result.response.text();
+    let responseText = result.response.text();
+    
+    // Replace markdown bold with strong tags
+    responseText = responseText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    
     const responseJson = JSON.parse(responseText.replace(/```json\n?/, "").replace(/```$/, ""));
 
 

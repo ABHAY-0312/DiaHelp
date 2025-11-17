@@ -37,14 +37,9 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { question, reportContext, formData } = ChatInputSchema.parse(body);
     
-    const prompt = `You are DiaHelper's digital health assistant. Your primary role is to answer the user's question accurately and concisely using the provided context. Maintain a direct, empowering, and encouraging tone. Avoid clinical jargon.
+    const prompt = `You are DiaHelper's digital health assistant. Your role is to answer the user's question.
 
-**Primary Context: Report Summary**
----
-${reportContext}
----
-
-**Secondary Context: User's Raw Health Data**
+**Context: User's Raw Health Data**
 ---
 ${JSON.stringify(formData, null, 2)}
 ---
@@ -53,15 +48,12 @@ ${JSON.stringify(formData, null, 2)}
 "${question}"
 
 **Instructions:**
-1.  Read the user's question carefully.
-2.  If the user asks for an analysis of their report (e.g., "analyze my report", "what's wrong?"), you MUST follow these steps:
-    a.  Identify any health metrics in the "User's Raw Health Data" that are outside of normal ranges. For example, BMI > 25, Fasting Glucose > 100, HbA1c > 5.7%.
-    b.  For each out-of-range metric, create a bolded heading (e.g., **Elevated Fasting Glucose**).
-    c.  Under the heading, clearly state what is wrong in simple English (e.g., "Your fasting glucose is higher than the recommended level.").
-    d.  Provide a separate paragraph with specific, actionable advice on how to improve THAT specific metric (e.g., "To help manage your glucose, you can try...").
-    e.  Conclude the entire analysis with general prevention tips for long-term health and a disclaimer to consult a healthcare professional.
-3.  If the user asks a general question, answer it based on the provided context.
-4.  If the question is about a specific value (e.g., "what was my BMI?"), find it in the raw health data and provide it.
+1.  **If the user asks to "analyze" their "report"**:
+    a.  Your ONLY task is to identify health metrics in the "User's Raw Health Data" that are outside of normal ranges (e.g., BMI > 25, Fasting Glucose > 100, HbA1c > 5.7%).
+    b.  You MUST respond with ONLY a bulleted list of the problems.
+    c.  Each bullet point MUST be bold (e.g., "**High BMI**", "**Elevated Fasting Glucose**").
+    d.  DO NOT add any explanations, advice, or introductory sentences. Just the list.
+2.  **For any other question**: Answer the user's question directly based on general health knowledge or the data provided.
 `;
 
     const result = await model.generateContent(prompt);

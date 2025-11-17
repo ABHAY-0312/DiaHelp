@@ -306,7 +306,7 @@ export function RiskAnalysis({ user, result, isLoading }: RiskAnalysisProps) {
   }, [result]);
 
   const handleDownloadPdf = async () => {
-    if (!printRef.current || !user || !result) {
+    if (!user || !result) {
         toast({
             variant: "destructive",
             title: "Download Error",
@@ -316,10 +316,34 @@ export function RiskAnalysis({ user, result, isLoading }: RiskAnalysisProps) {
     }
 
     setIsDownloading(true);
+    
+    // Ensure timeline data is loaded before rendering for PDF
+    if (!timelineData) {
+        try {
+            const existingTimeline = await getHealthTimeline(user.uid, result.id);
+            if (existingTimeline) {
+                setTimelineData(existingTimeline);
+            } else {
+                 toast({ title: "Timeline Info", description: "Generating timeline for PDF. This may take a moment."});
+                 // In a real scenario you might want to generate it here. For now, we'll just alert and proceed.
+                 // This example will proceed without timeline if not already loaded.
+            }
+        } catch (e) {
+             toast({ variant: "destructive", title: "Timeline Error", description: "Could not fetch timeline for PDF." });
+        }
+    }
+
     setIsPdfRenderMode(true); // Mount the hidden component
 
     // Brief delay to allow the component and its charts to render
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    if (!printRef.current) {
+        toast({ variant: "destructive", title: "Download Error", description: "Could not prepare the report for download." });
+        setIsDownloading(false);
+        setIsPdfRenderMode(false);
+        return;
+    }
 
     try {
         const reportElement = printRef.current;

@@ -20,17 +20,22 @@ interface HealthInputFormProps {
   isLoading: boolean;
 }
 
-const formFields: { name: keyof Omit<HealthFormData, 'patientName' | 'emergencyContactEmail' | 'gender' | 'familyHistory' | 'physicalActivity' | 'stressLevel'>; label: string; description: string }[] = [
-  { name: "age", label: "Age", description: "Your current age in years." },
-  { name: "bmi", label: "BMI", description: "Your Body Mass Index. (e.g., 24.5)" },
-  { name: "waistCircumference", label: "Waist Circumference (cm)", description: "Measured at the narrowest point." },
-  { name: "fastingGlucose", label: "Fasting Glucose (mg/dL)", description: "Your blood sugar after an overnight fast." },
-  { name: "hba1c", label: "HbA1c (%)", description: "Your average blood sugar over 3 months." },
-  { name: "fastingInsulin", label: "Fasting Insulin (muU/mL)", description: "Your insulin level after a fast." },
-  { name: "triglycerides", label: "Triglycerides (mg/dL)", description: "A type of fat found in your blood." },
-  { name: "hdlCholesterol", label: "HDL Cholesterol (mg/dL)", description: "Your 'good' cholesterol level." },
-  { name: "bloodPressure", label: "Diastolic Blood Pressure", description: "The lower number of your BP reading." },
-  { name: "sleepHours", label: "Avg. Sleep Hours", description: "Average hours you sleep per night."}
+const formFields: { 
+  name: keyof Omit<HealthFormData, 'patientName' | 'emergencyContactEmail' | 'gender' | 'familyHistory' | 'physicalActivity' | 'stressLevel'>; 
+  label: string; 
+  description: string;
+  placeholder: string;
+}[] = [
+  { name: "age", label: "Age", description: "Your current age in years.", placeholder: "45" },
+  { name: "bmi", label: "BMI", description: "Your Body Mass Index.", placeholder: "22.5" },
+  { name: "waistCircumference", label: "Waist Circumference (cm)", description: "Measured at the narrowest point.", placeholder: "85" },
+  { name: "fastingGlucose", label: "Fasting Glucose (mg/dL)", description: "Your blood sugar after an overnight fast.", placeholder: "95" },
+  { name: "hba1c", label: "HbA1c (%)", description: "Your average blood sugar over 3 months.", placeholder: "5.4" },
+  { name: "fastingInsulin", label: "Fasting Insulin (muU/mL)", description: "Your insulin level after a fast.", placeholder: "10" },
+  { name: "triglycerides", label: "Triglycerides (mg/dL)", description: "A type of fat found in your blood.", placeholder: "140" },
+  { name: "hdlCholesterol", label: "HDL Cholesterol (mg/dL)", description: "Your 'good' cholesterol level.", placeholder: "55" },
+  { name: "bloodPressure", label: "Diastolic Blood Pressure", description: "The lower number of your BP reading.", placeholder: "75" },
+  { name: "sleepHours", label: "Avg. Sleep Hours", description: "Average hours you sleep per night.", placeholder: "8" }
 ];
 
 export function HealthInputForm({ onSubmit, isLoading }: HealthInputFormProps) {
@@ -143,7 +148,7 @@ export function HealthInputForm({ onSubmit, isLoading }: HealthInputFormProps) {
                   )}
                 />
 
-              {formFields.map(({ name, label, description }) => (
+              {formFields.map(({ name, label, description, placeholder }) => (
                 <FormField
                   key={name}
                   control={form.control}
@@ -155,6 +160,7 @@ export function HealthInputForm({ onSubmit, isLoading }: HealthInputFormProps) {
                         <Input 
                             type="number" 
                             step="any" 
+                            placeholder={placeholder}
                             {...field} 
                             value={field.value ?? ''} 
                             onChange={e => field.onChange(e.target.value === '' ? '' : e.target.valueAsNumber)} 
@@ -247,4 +253,3 @@ export function HealthInputForm({ onSubmit, isLoading }: HealthInputFormProps) {
     </Card>
   );
 }
-

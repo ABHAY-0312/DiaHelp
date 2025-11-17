@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
     const input = HealthAssistantChatInputSchema.parse(body);
 
     const prompt = `You are an expert, friendly, and knowledgeable digital health assistant for DiaHelper. Provide a direct, clear, and accurate answer to the user's health question. Your tone should be supportive and easy to understand.
-Respond with only a valid JSON object conforming to the HealthAssistantChatOutput schema.
+Respond with only a valid JSON object conforming to the HealthAssistantChatOutputSchema.
 
 User's Question:
 ---
@@ -53,6 +53,6 @@ ${input.question}
       return NextResponse.json({ error: 'Invalid input', details: e.errors }, { status: 400 });
     }
     console.error("Health assistant chat failed.", e);
-    return NextResponse.json({ error: 'Internal Server Error', message: e.message || 'An unexpected error occurred.' }, { status: 500 });
+    return NextResponse.json({ error: 'Internal ServerError', message: e.message || 'An unexpected error occurred.' }, { status: 500 });
   }
 }

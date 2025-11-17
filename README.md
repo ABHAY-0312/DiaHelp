@@ -10,9 +10,6 @@ By leveraging a **predictive machine learning model** and **generative AI**, Dia
 
 ---
 
-
----
-
 ## 🚀 Key Features  
 
 ### 🧠 AI-Powered Risk Assessment  
@@ -63,8 +60,6 @@ The logout system has been optimized for **faster session termination**, **enhan
 - Improved redirection to the login screen.  
 - Added visual feedback confirming successful logout.
 
-
-
 ---
 
 ## 🚀 What's New in DiaHelper v3.0
@@ -81,11 +76,16 @@ Get a personalized 7-day exercise plan tailored to your fitness level, or calcul
 ### 🏥 4. Care Finder
 Find hospitals and medical centers near you with a simple search. The AI provides names, addresses, and phone numbers for facilities in your area.
 
+---
 
 ## 🛠️ API and Integration Fixes (v2.0)
 
 - **Improved AI Error Handling**: Implemented robust error handling for AI services. The app now gracefully manages API timeouts and "model overloaded" errors by displaying user-friendly notifications instead of crashing.
 - **Optimized Chatbot Performance**: Consolidated multiple API calls into a single, more efficient operation for the chatbot, significantly reducing response times from ~30 seconds to near-instantaneous.
+
+---
+
+## 🛠️ API and Integration Fixes (v3.0)
 - **Fixed State Synchronization Bugs**: Resolved a critical bug causing crashes when generating a new analysis report by ensuring proper handling of `Date` and `Timestamp` objects.
 - **Corrected API Response Parsing**: Fixed multiple bugs where the app would crash due to incorrect parsing of JSON responses from the AI, ensuring reliable communication.
 - **Fixed Text Rendering**: Resolved an issue where bold text (`**...**`) in AI-generated reports and chat messages was not being rendered correctly, improving readability.
@@ -100,7 +100,7 @@ Find hospitals and medical centers near you with a simple search. The AI provide
 |----------|----------|
 | **v1.0** | Initial release with Risk Assessment, Chatbot, Meal Analyzer, Dataset Analyzer, and Health Log. |
 | **v2.0** | Added **Prescription Reader**, **Glycemic Index Integration**, **Improved Logout System**, and **API Fixes**. |
-| **v3.0** | Added **Digital Twin**, **Health Literacy Hub**, **Wellness Hub**, and **Care Finder**. |
+| **v3.0** | Added **Digital Twin** , Chages **Health Metrics** |
 
 ---
 

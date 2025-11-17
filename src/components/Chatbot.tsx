@@ -23,7 +23,6 @@ interface Message {
   id: string;
   type: 'user' | 'bot';
   text: string;
-  isAnalysis?: boolean;
 }
 
 export function Chatbot({ reportContext, formData }: ChatbotProps) {
@@ -85,7 +84,7 @@ export function Chatbot({ reportContext, formData }: ChatbotProps) {
                 title: "AI Service Busy",
                 description: "The AI assistant is currently experiencing high demand. Please try again in a moment.",
             });
-             setMessages((prev) => prev.filter((m) => m.id !== 'thinking'));
+             setMessages((prev) => prev.filter((m) => m.id !== 'thinking' && m.id !== userMessage.id));
         } else if (errorBody.error === 'Inappropriate content detected') {
           toast({
             variant: "destructive",
@@ -101,7 +100,7 @@ export function Chatbot({ reportContext, formData }: ChatbotProps) {
       }
       
       const responseData: ChatOutput = await response.json();
-      const botMessage: Message = { id: (Date.now() + 1).toString(), type: 'bot', text: responseData.answer, isAnalysis: isAnalysisRequest };
+      const botMessage: Message = { id: (Date.now() + 1).toString(), type: 'bot', text: responseData.answer };
       
       setMessages((prev) => {
           const newMessages = prev.filter(m => m.id !== 'thinking');
@@ -124,24 +123,25 @@ export function Chatbot({ reportContext, formData }: ChatbotProps) {
                 description: 'Sorry, I had trouble getting a response. Please try again.',
             });
        }
-      setMessages((prev) => prev.filter((m) => m.id !== 'thinking'));
+      setMessages((prev) => prev.filter((m) => m.id !== 'thinking' && m.id !== userMessage.id));
     } finally {
       setIsLoading(false);
     }
   };
 
-  const formatAnalysisText = (text: string) => {
+  const formatBotMessage = (text: string) => {
     // Convert **text** to <strong>text</strong>
     let formattedText = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
     
     // Check if the text is a list (contains '*' as a list item marker)
     if (formattedText.includes('* ')) {
         const listItems = formattedText.split('* ').filter(item => item.trim() !== '');
-        const html = '<ul>' + listItems.map(item => `<li class="my-2">${item.trim()}</li>`).join('') + '</ul>';
+        const html = '<ul>' + listItems.map(item => `<li class="my-1">${item.trim().replace(/\n/g, '<br/>')}</li>`).join('') + '</ul>';
         return html;
     }
     
-    return formattedText;
+    // Otherwise, just replace newlines with <br> for paragraph breaks
+    return formattedText.replace(/\n/g, '<br/>');
   };
 
   return (
@@ -187,11 +187,8 @@ export function Chatbot({ reportContext, formData }: ChatbotProps) {
                             message.type === 'user' ? 'bg-primary text-primary-foreground' : 'bg-background'
                         )}
                         >
-                            {message.isAnalysis ? (
-                                <div className="prose prose-sm max-w-none text-foreground prose-li:my-1" dangerouslySetInnerHTML={{ __html: formatAnalysisText(message.text) }} />
-                            ) : (
-                                <p className="leading-relaxed">{message.text}</p>
-                            )}
+                            <div className="prose prose-sm max-w-none text-foreground prose-li:my-1" dangerouslySetInnerHTML={{ __html: formatBotMessage(message.text) }} />
+
                         </div>
                         {message.type === 'user' && (
                             <Avatar className="w-9 h-9">

@@ -64,7 +64,7 @@ ${JSON.stringify(formData, null, 2)}
     c.  For each out-of-range metric, format the point like this: "**Problem:** Your value is [User's Value], which is [above/below] the normal range of [Normal Range]. This means [simple explanation]."
     d.  Example: ***High BMI:** Your BMI is 28, which is above the healthy range of 18.5-24.9. This means you are in the overweight category.
     e.  DO NOT add any other explanations, advice, or introductory/concluding sentences. Just the list.
-2.  **For any other question**: Answer the user's question directly based on general health knowledge or the data provided, in a friendly and conversational tone.
+2.  **For any other question**: Answer the user's question directly based on general health knowledge or the data provided, in a friendly and conversational tone. If you need to create a list, use a '*' for each bullet point.
 `;
 
     const result = await model.generateContent(prompt);

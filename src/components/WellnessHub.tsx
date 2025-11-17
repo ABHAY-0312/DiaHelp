@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Sparkles, Dumbbell, Bot, AlertTriangle, Send, Activity } from 'lucide-react';
+import { Loader2, Sparkles, Dumbbell, Bot, AlertTriangle, Send, Activity, BrainCircuit } from 'lucide-react';
 import type { AnalysisResult } from '@/lib/types';
 import { Skeleton } from './ui/skeleton';
 import { ScrollArea } from './ui/scroll-area';
@@ -21,6 +21,7 @@ import type { GenerateExercisePlanOutput, GenerateExercisePlanInput } from '@/ap
 import type { GenerateMetabolicAgeOutput, GenerateMetabolicAgeInput } from '@/app/api/generate-metabolic-age/route';
 import type { HealthAssistantChatOutput, HealthAssistantChatInput } from '@/app/api/health-assistant-chat/route';
 import type { ModerateTextOutput } from '@/app/api/moderate-text/route';
+import { DigitalTwin } from './DigitalTwin';
 
 
 interface WellnessHubProps {
@@ -480,3 +481,5 @@ const ExercisePlanSkeleton = () => (
         </div>
     </CardContent>
 );
+
+    

@@ -12,7 +12,7 @@ import { useAuth } from "@/context/AuthContext";
 import { auth } from "@/lib/firebase/config";
 import { useRouter } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
-import { History, LayoutDashboard, LogOut, UtensilsCrossed, Moon, Sun, Notebook, TrendingUp, Database, Menu, Salad, HeartPulse, FlaskConical, Home, GraduationCap, Hospital, LifeBuoy } from "lucide-react";
+import { History, LayoutDashboard, LogOut, UtensilsCrossed, Moon, Sun, Notebook, TrendingUp, Database, Menu, Salad, HeartPulse, FlaskConical, Home, GraduationCap, Hospital, LifeBuoy, BrainCircuit } from "lucide-react";
 import { PredictionHistory } from "./PredictionHistory";
 import { MealAnalyzer } from "./MealAnalyzer";
 import { Button } from "./ui/button";
@@ -33,6 +33,7 @@ import { CareFinder } from "./CareFinder";
 import ContactUsPage from "./ContactUsPage";
 import { Footer } from "./Footer";
 import type { GenerateReportInput, GenerateReportOutput } from "@/app/api/generate-report/route";
+import { DigitalTwin } from "./DigitalTwin";
 
 const calculateRisk = (data: Partial<HealthFormData>): { riskScore: number; shapValues: { name: string; value: number }[] } => {
     const { age = 40, gender = 'female', bmi = 25, waistCircumference = 90, fastingGlucose = 100, hba1c = 5.5, fastingInsulin = 10, triglycerides = 150, hdlCholesterol = 50, bloodPressure = 80, familyHistory = 'no', sleepHours = 7, physicalActivity = 'moderate', stressLevel = 'medium' } = data;
@@ -347,6 +348,8 @@ export default function Dashboard() {
             return <CareFinder />
         case 'contact':
             return <ContactUsPage />
+        case 'digitalTwin':
+            return <DigitalTwin latestResult={analysisResult} />
         default:
             return null;
     }
@@ -395,6 +398,10 @@ export default function Dashboard() {
              <NavButton currentView={view} view="literacyHub" setView={handleSetView}>
                 <GraduationCap className="h-5 w-5" />
                 Health Literacy
+            </NavButton>
+             <NavButton currentView={view} view="digitalTwin" setView={handleSetView}>
+                <BrainCircuit className="h-5 w-5" />
+                Digital Twin
             </NavButton>
 
             <NavGroup title="Tools" />
@@ -537,3 +544,5 @@ export default function Dashboard() {
     </>
   );
 }
+
+    

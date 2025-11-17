@@ -100,7 +100,7 @@ Find hospitals and medical centers near you with a simple search. The AI provide
 |----------|----------|
 | **v1.0** | Initial release with Risk Assessment, Chatbot, Meal Analyzer, Dataset Analyzer, and Health Log. |
 | **v2.0** | Added **Prescription Reader**, **Glycemic Index Integration**, **Improved Logout System**, and **API Fixes**. |
-| **v3.0** | Added **Digital Twin** , Chages **Health Metrics** |
+| **v3.0** | Added **Digital Twin** , Changes **Health Metricsc Values** |
 
 ---
 
@@ -109,4 +109,3 @@ Find hospitals and medical centers near you with a simple search. The AI provide
   <b>Made with ❤️ by Abhay</b><br>
   🌐 <a href="https://dia-help.vercel.app/" target="_blank">https://dia-help.vercel.app/</a>
 </p>
-

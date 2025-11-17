@@ -6,27 +6,30 @@ service cloud.firestore {
     function isSignedIn() {
       return request.auth != null;
     }
+    
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
 
-    // Predictions: Users can create and read their own predictions.
+    // Predictions: Users can create, read, and list their own predictions.
     match /predictions/{predictionId} {
-      allow read, create: if isSignedIn() && request.auth.uid == request.resource.data.userId;
+      allow read, create: if isOwner(request.resource.data.userId);
     }
     match /predictions/{wildcard=**} {
       allow list: if isSignedIn();
     }
 
-    // Health Logs: Users can create and read their own health logs.
+    // Health Logs: Users can create, read, and list their own health logs.
     match /healthLogs/{logId} {
-      allow read, create: if isSignedIn() && request.auth.uid == request.resource.data.userId;
+      allow read, create: if isOwner(request.resource.data.userId);
     }
     match /healthLogs/{wildcard=**} {
       allow list: if isSignedIn();
     }
 
-
-    // Quiz Attempts: Users can create and read their own quiz attempts.
+    // Quiz Attempts: Users can create, read, and list their own quiz attempts.
     match /quizAttempts/{attemptId} {
-       allow read, create: if isSignedIn() && request.auth.uid == request.resource.data.userId;
+       allow read, create: if isOwner(request.resource.data.userId);
     }
      match /quizAttempts/{wildcard=**} {
       allow list: if isSignedIn();
@@ -34,14 +37,14 @@ service cloud.firestore {
 
     // Contact Queries: Users can create their own queries.
     match /contactQueries/{queryId} {
-        allow create: if isSignedIn() && request.auth.uid == request.resource.data.userId;
+        allow create: if isOwner(request.resource.data.userId);
     }
 
-    // Timelines: Users can read and create timelines associated with their predictions.
+    // Timelines: Users can create, read and list timelines associated with their predictions.
     match /timelines/{timelineId} {
-      allow read, create: if isSignedIn() && request.auth.uid == request.resource.data.userId;
+      allow read, create: if isOwner(request.resource.data.userId);
     }
-    match /timelines/{wildcard=**} {
+     match /timelines/{wildcard=**} {
       allow list: if isSignedIn();
     }
   }

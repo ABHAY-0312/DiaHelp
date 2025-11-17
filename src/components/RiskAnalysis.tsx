@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import type { AnalysisResult } from "@/lib/types";
@@ -155,7 +156,7 @@ const ShapAnalysisChart = ({ shapValues }: { shapValues: { name: string; value: 
   );
 };
 
-const HealthTimeline = ({ user, result, isPdfMode, timelineData, setTimelineData, isLoading, setIsLoading }: { user: User, result: PredictionRecord, isPdfMode?: boolean, timelineData: GenerateTimelineOutput | null, setTimelineData: (data: GenerateTimelineOutput | null) => void, isLoading: boolean, setIsLoading: (loading: boolean) => void }) => {
+const HealthTimeline = ({ user, result, isPdfMode, timelineData, setTimelineData, isLoading, setIsLoading }: { user: User, result: PredictionRecord, isPdfMode?: boolean, timelineData: GenerateTimelineOutput | HealthTimelineRecord | null, setTimelineData: (data: GenerateTimelineOutput | HealthTimelineRecord | null) => void, isLoading: boolean, setIsLoading: (loading: boolean) => void }) => {
     const { toast } = useToast();
     const hasFetched = useRef(false);
 
@@ -277,13 +278,13 @@ const clinicalInputsConfig = [
     { key: 'age', label: 'Age', unit: 'years', norm: 'N/A' },
     { key: 'gender', label: 'Gender', unit: '', norm: 'N/A' },
     { key: 'bmi', label: 'BMI', unit: '', norm: '18.5 - 24.9' },
-    { key: 'waistCircumference', label: 'Waist Circumference', unit: 'cm', norm: '< 94 (Male), < 80 (Female)' },
+    { key: 'waistCircumference', label: 'Waist Circumference', unit: 'cm', norm: '&lt; 94 (Male), &lt; 80 (Female)' },
     { key: 'fastingGlucose', label: 'Fasting Glucose', unit: 'mg/dL', norm: '70 - 100' },
-    { key: 'hba1c', label: 'HbA1c', unit: '%', norm: '< 5.7' },
+    { key: 'hba1c', label: 'HbA1c', unit: '%', norm: '&lt; 5.7' },
     { key: 'fastingInsulin', label: 'Fasting Insulin', unit: 'muU/mL', norm: '2.6 - 24.9' },
-    { key: 'triglycerides', label: 'Triglycerides', unit: 'mg/dL', norm: '< 150' },
-    { key: 'hdlCholesterol', label: 'HDL Cholesterol', unit: 'mg/dL', norm: '> 40 (Male), > 50 (Female)' },
-    { key: 'bloodPressure', label: 'Diastolic BP', unit: 'mmHg', norm: '< 80' },
+    { key: 'triglycerides', label: 'Triglycerides', unit: 'mg/dL', norm: '&lt; 150' },
+    { key: 'hdlCholesterol', label: 'HDL Cholesterol', unit: 'mg/dL', norm: '&gt; 40 (Male), &gt; 50 (Female)' },
+    { key: 'bloodPressure', label: 'Diastolic BP', unit: 'mmHg', norm: '&lt; 80' },
     { key: 'familyHistory', label: 'Family History', unit: '', norm: 'No' },
     { key: 'sleepHours', label: 'Sleep Hours', unit: 'hrs/night', norm: '7 - 9' },
     { key: 'physicalActivity', label: 'Physical Activity', unit: '', norm: 'Moderate to Active' },
@@ -294,7 +295,7 @@ const clinicalInputsConfig = [
 export function RiskAnalysis({ user, result, isLoading }: RiskAnalysisProps) {
   const [isDownloading, setIsDownloading] = useState(false);
   const [isPdfRenderMode, setIsPdfRenderMode] = useState(false);
-  const [timelineData, setTimelineData] = useState<GenerateTimelineOutput | null>(null);
+  const [timelineData, setTimelineData] = useState<GenerateTimelineOutput | HealthTimelineRecord | null>(null);
   const [isTimelineLoading, setIsTimelineLoading] = useState(false);
 
   const printRef = useRef<HTMLDivElement>(null);
@@ -317,63 +318,66 @@ export function RiskAnalysis({ user, result, isLoading }: RiskAnalysisProps) {
 
     setIsDownloading(true);
     
+    let currentTimelineData = timelineData;
     // Ensure timeline data is loaded before rendering for PDF
-    if (!timelineData) {
+    if (!currentTimelineData) {
         try {
             const existingTimeline = await getHealthTimeline(user.uid, result.id);
             if (existingTimeline) {
                 setTimelineData(existingTimeline);
+                currentTimelineData = existingTimeline;
             } else {
-                 toast({ title: "Timeline Info", description: "Generating timeline for PDF. This may take a moment."});
-                 // In a real scenario you might want to generate it here. For now, we'll just alert and proceed.
-                 // This example will proceed without timeline if not already loaded.
+                 toast({ title: "Timeline Info", description: "Fetching timeline for PDF. This may take a moment."});
+                 // This will now be handled by the on-demand fetch inside HealthTimeline
             }
         } catch (e) {
              toast({ variant: "destructive", title: "Timeline Error", description: "Could not fetch timeline for PDF." });
+             setIsDownloading(false);
+             return;
         }
     }
 
     setIsPdfRenderMode(true); // Mount the hidden component
 
     // Brief delay to allow the component and its charts to render
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    setTimeout(async () => {
+        if (!printRef.current) {
+            toast({ variant: "destructive", title: "Download Error", description: "Could not prepare the report for download." });
+            setIsDownloading(false);
+            setIsPdfRenderMode(false);
+            return;
+        }
 
-    if (!printRef.current) {
-        toast({ variant: "destructive", title: "Download Error", description: "Could not prepare the report for download." });
-        setIsDownloading(false);
-        setIsPdfRenderMode(false);
-        return;
-    }
+        try {
+            const reportElement = printRef.current;
+            const canvas = await html2canvas(reportElement, {
+                scale: 2,
+                useCORS: true,
+                logging: false,
+            });
 
-    try {
-        const reportElement = printRef.current;
-        const canvas = await html2canvas(reportElement, {
-            scale: 2,
-            useCORS: true,
-            logging: false,
-        });
+            const imgData = canvas.toDataURL('image/png');
+            const pdf = new jsPDF({
+                orientation: 'p',
+                unit: 'px',
+                format: [canvas.width, canvas.height],
+            });
 
-        const imgData = canvas.toDataURL('image/png');
-        const pdf = new jsPDF({
-            orientation: 'p',
-            unit: 'px',
-            format: [canvas.width, canvas.height],
-        });
+            pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+            pdf.save(`DiaHelper-Report-${result.patientName.replace(' ', '_')}.pdf`);
 
-        pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
-        pdf.save(`DiaHelper-Report-${result.patientName.replace(' ', '_')}.pdf`);
-
-    } catch (error) {
-        console.error("Error generating PDF:", error);
-        toast({
-            variant: "destructive",
-            title: "Download Failed",
-            description: "There was an error creating the PDF file.",
-        });
-    } finally {
-        setIsDownloading(false);
-        setIsPdfRenderMode(false); // Unmount the hidden component
-    }
+        } catch (error) {
+            console.error("Error generating PDF:", error);
+            toast({
+                variant: "destructive",
+                title: "Download Failed",
+                description: "There was an error creating the PDF file.",
+            });
+        } finally {
+            setIsDownloading(false);
+            setIsPdfRenderMode(false); // Unmount the hidden component
+        }
+    }, 2000); // 2-second delay to ensure rendering
   };
 
 
@@ -442,8 +446,7 @@ export function RiskAnalysis({ user, result, isLoading }: RiskAnalysisProps) {
         <CardFooter className="px-6 pb-6 mt-4 no-print">
             <Button onClick={handleDownloadPdf} size="lg" className="w-full font-bold text-base" disabled={isDownloading}>
                 {isDownloading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Download className="mr-2 h-5 w-5" />}
-                {isDownloading ? 'Generating PDF...' : 'Download Report'}
-            </Button>
+                {isDownloading ? 'Generating PDF...' : 'Download Report'}</Button>
         </CardFooter>
     </Card>
 
@@ -493,7 +496,7 @@ export function RiskAnalysis({ user, result, isLoading }: RiskAnalysisProps) {
                              <tr key={config.key} className="border-b last:border-none">
                                 <td className="p-2">{config.label}</td>
                                 <td className="p-2 font-mono capitalize">{String(result.formData[config.key as keyof typeof result.formData])} {config.unit}</td>
-                                <td className="p-2 font-mono">{config.norm}</td>
+                                <td className="p-2 font-mono" dangerouslySetInnerHTML={{ __html: config.norm }}></td>
                              </tr>
                         ))}
                     </tbody>
@@ -599,3 +602,6 @@ const LoadingSkeleton = () => (
     </Card>
 )
 
+
+
+    

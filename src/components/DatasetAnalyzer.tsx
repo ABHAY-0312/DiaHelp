@@ -148,16 +148,7 @@ export function DatasetAnalyzer({ onCalculateRisk }: DatasetAnalyzerProps) {
             });
             setResults(predictions);
         } catch (error: any) {
-             const errorMessage = error.message || "";
-             if (errorMessage.includes("429")) {
-                  toast({
-                     variant: "destructive",
-                     title: "AI Service Rate Limited",
-                     description: "You've exceeded the daily usage limit for the AI service. Please try again tomorrow. For more information, visit ai.google.dev/gemini-api/docs/rate-limits.",
-                 });
-             } else {
-                toast({ variant: "destructive", title: "Validation Error", description: error.errors[0]?.message || "A row in your CSV has invalid data."});
-             }
+             toast({ variant: "destructive", title: "Validation Error", description: error.errors[0]?.message || "A row in your CSV has invalid data."});
         } finally {
             setIsLoading(false);
         }

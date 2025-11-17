@@ -78,6 +78,12 @@ export function DigitalTwin({ latestResult }: DigitalTwinProps) {
                 title: "AI Service Rate Limited",
                 description: "You've exceeded the daily usage limit for this feature. Please try again tomorrow.",
             });
+       } else if (errorMessage.includes("503") || errorMessage.toLowerCase().includes("overloaded")) {
+            toast({
+                variant: "destructive",
+                title: "AI Service Busy",
+                description: "The Digital Twin simulator is currently experiencing high demand. Please try again in a moment.",
+            });
        } else {
             toast({
                 variant: 'destructive',

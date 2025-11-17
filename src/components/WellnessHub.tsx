@@ -93,7 +93,7 @@ function ExercisePlanGenerator({ latestResult }: ExercisePlanGeneratorProps) {
             toast({
                 variant: "destructive",
                 title: "AI Service Rate Limited",
-                description: "You've exceeded the daily usage limit for the AI service. Please try again tomorrow. For more information, visit ai.google.dev/gemini-api/docs/rate-limits.",
+                description: "You've exceeded the daily usage limit for the AI service. Please try again tomorrow.",
             });
        } else if (errorMessage.includes("503") || errorMessage.toLowerCase().includes("overloaded")) {
            toast({
@@ -217,13 +217,7 @@ function MetabolicAgeCalculator({ latestResult }: { latestResult: AnalysisResult
             setMetabolicAgeResult(result);
         } catch (error: any) {
             console.error('Metabolic age error:', error);
-            let errorMessage = "An unknown error occurred.";
-            try {
-                const errorObj = JSON.parse(error.message);
-                errorMessage = errorObj.message || error.message;
-            } catch (e) {
-                errorMessage = error.message || errorMessage;
-            }
+            const errorMessage = error.message || "";
 
             if (errorMessage.includes("429")) {
                 toast({
@@ -367,7 +361,7 @@ function HealthAssistant() {
             toast({
                 variant: "destructive",
                 title: "AI Service Rate Limited",
-                description: "You've exceeded the daily usage limit for the AI service. Please try again tomorrow. For more information, visit ai.google.dev/gemini-api/docs/rate-limits.",
+                description: "You've exceeded the daily usage limit for the AI service. Please try again tomorrow.",
             });
         } else if (errorMessage.includes("503") || errorMessage.toLowerCase().includes("overloaded")) {
             toast({

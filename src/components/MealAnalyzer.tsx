@@ -81,7 +81,7 @@ export function MealAnalyzer() {
             toast({
                 variant: "destructive",
                 title: "AI Service Rate Limited",
-                description: "You've exceeded the daily usage limit for the AI service. Please try again tomorrow. For more information, visit ai.google.dev/gemini-api/docs/rate-limits.",
+                description: "You've exceeded the daily usage limit for the AI service. Please try again tomorrow.",
             });
       } else if (errorMessage.includes("503") || errorMessage.toLowerCase().includes("overloaded")) {
           toast({

@@ -85,7 +85,13 @@ export function HealthLiteracyHub() {
                 toast({
                     variant: "destructive",
                     title: "AI Service Rate Limited",
-                    description: "You've exceeded the daily usage limit for the AI service. Please try again tomorrow. For more information, visit ai.google.dev/gemini-api/docs/rate-limits.",
+                    description: "You've exceeded the daily usage limit for the AI service. Please try again tomorrow.",
+                });
+            } else if (errorMessage.includes("503") || errorMessage.toLowerCase().includes("overloaded")) {
+                toast({
+                    variant: "destructive",
+                    title: "AI Service Busy",
+                    description: "The quiz generator is currently experiencing high demand. Please try again in a moment.",
                 });
             } else {
                  toast({ variant: 'destructive', title: 'Generation Failed', description: 'Could not generate the quiz. Please try again.' });
@@ -105,7 +111,7 @@ export function HealthLiteracyHub() {
                 score,
                 totalQuestions: quizData.questions.length,
             });
-            fetchHistory(); // Refresh history after saving
+            fetchHistory();
         } catch (error) {
              toast({ variant: 'destructive', title: 'Error', description: 'Could not save your quiz attempt.' });
         }

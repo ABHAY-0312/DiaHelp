@@ -15,7 +15,6 @@ import { Skeleton } from './ui/skeleton';
 import { Switch } from './ui/switch';
 import type { GenerateMealPlanInput, GenerateMealPlanOutput } from '@/app/api/generate-meal-plan/route';
 import type { FindRecipesInput, FindRecipesOutput } from '@/app/api/find-recipes/route';
-import type { ModerateTextOutput } from '@/app/api/moderate-text/route';
 
 interface NutritionHubProps {
   latestResult: AnalysisResult | null;
@@ -85,7 +84,7 @@ function MealPlanGenerator({ latestResult }: { latestResult: AnalysisResult | nu
           toast({
               variant: "destructive",
               title: "AI Service Rate Limited",
-              description: "You've exceeded the daily usage limit for the AI service. Please try again tomorrow. For more information, visit ai.google.dev/gemini-api/docs/rate-limits.",
+              description: "You've exceeded the daily usage limit for the AI service. Please try again tomorrow.",
           });
       } else if (errorMessage.includes("503") || errorMessage.toLowerCase().includes("overloaded")) {
           toast({
@@ -217,7 +216,7 @@ function RecipeFinder() {
             toast({
                 variant: "destructive",
                 title: "AI Service Rate Limited",
-                description: "You've exceeded the daily usage limit for the AI service. Please try again tomorrow. For more information, visit ai.google.dev/gemini-api/docs/rate-limits.",
+                description: "You've exceeded the daily usage limit for the AI service. Please try again tomorrow.",
             });
         } else if (errorMessage.includes("503") || errorMessage.toLowerCase().includes("overloaded")) {
           toast({

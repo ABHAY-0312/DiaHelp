@@ -223,8 +223,17 @@ function MetabolicAgeCalculator({ latestResult }: { latestResult: AnalysisResult
             const result: GenerateMetabolicAgeOutput = await response.json();
             setMetabolicAgeResult(result);
         } catch (error: any) {
-             console.error('Metabolic age error:', error);
-            const errorMessage = error.message || "";
+            console.error('Metabolic age error:', error);
+            let errorMessage = "An unknown error occurred.";
+            try {
+                // The error.message is often a JSON string, try to parse it.
+                const errorObj = JSON.parse(error.message);
+                errorMessage = errorObj.message || error.message;
+            } catch (e) {
+                // If parsing fails, use the original message.
+                errorMessage = error.message || errorMessage;
+            }
+
             if (errorMessage.includes("429")) {
                 toast({
                     variant: "destructive",
@@ -232,7 +241,7 @@ function MetabolicAgeCalculator({ latestResult }: { latestResult: AnalysisResult
                     description: "You've exceeded the daily usage limit for this feature. Please try again tomorrow.",
                 });
             } else if (errorMessage.includes("503") || errorMessage.toLowerCase().includes("overloaded")) {
-                 toast({
+                toast({
                     variant: "destructive",
                     title: "AI Service Busy",
                     description: "The metabolic age calculator is currently experiencing high demand. Please try again in a moment.",
@@ -481,6 +490,8 @@ const ExercisePlanSkeleton = () => (
         </div>
     </CardContent>
 );
+
+    
 
     
 

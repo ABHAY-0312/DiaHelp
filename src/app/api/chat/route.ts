@@ -60,9 +60,9 @@ ${JSON.stringify(formData, null, 2)}
 **Instructions:**
 1.  **If the user asks to "analyze" their "report"**:
     a.  Your ONLY task is to identify health metrics in the "User's Raw Health Data" that are outside of the "Normal Health Ranges".
-    b.  You MUST respond with ONLY a bulleted list.
-    c.  For each out-of-range metric, format the bullet point like this: "**Problem:** Your value is [User's Value], which is [above/below] the normal range of [Normal Range]. This means [simple explanation]."
-    d.  Example: "**High BMI:** Your BMI is 28, which is above the healthy range of 18.5-24.9. This indicates you are in the overweight category."
+    b.  You MUST respond with a list of points, each starting with a '*'. DO NOT use any other list format.
+    c.  For each out-of-range metric, format the point like this: "**Problem:** Your value is [User's Value], which is [above/below] the normal range of [Normal Range]. This means [simple explanation]."
+    d.  Example: ***High BMI:** Your BMI is 28, which is above the healthy range of 18.5-24.9. This means you are in the overweight category.
     e.  DO NOT add any other explanations, advice, or introductory/concluding sentences. Just the list.
 2.  **For any other question**: Answer the user's question directly based on general health knowledge or the data provided, in a friendly and conversational tone.
 `;
@@ -70,22 +70,13 @@ ${JSON.stringify(formData, null, 2)}
     const result = await model.generateContent(prompt);
     const responseText = result.response.text();
     
-    // The response is expected to be a JSON object string.
-    // However, if the model fails to provide one, we wrap its response.
-    let responseJson;
-    try {
-        responseJson = JSON.parse(responseText.replace(/```json\n?/, "").replace(/```$/, ""));
-    } catch (e) {
-        responseJson = { answer: responseText };
-    }
-
+    const responseJson = { answer: responseText };
 
     return NextResponse.json(responseJson);
   } catch (e: any) {
     if (e instanceof ZodError) {
       return NextResponse.json({ error: 'Invalid input', details: e.errors }, { status: 400 });
     }
-     // Handle safety-related blocks from the model
     if (e.message && (e.message.includes('safety') || e.message.includes('blocked'))) {
       return NextResponse.json({ error: 'Inappropriate content detected', message: 'Your message was blocked due to safety settings. Please rephrase.' }, { status: 400 });
     }

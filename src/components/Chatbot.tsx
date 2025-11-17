@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Bot, CornerDownLeft, Loader2, User } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -23,7 +23,7 @@ interface Message {
   id: string;
   type: 'user' | 'bot';
   text: string;
-  isLoading?: boolean;
+  isAnalysis?: boolean;
 }
 
 export function Chatbot({ reportContext, formData }: ChatbotProps) {
@@ -57,11 +57,11 @@ export function Chatbot({ reportContext, formData }: ChatbotProps) {
     const userMessage: Message = { id: Date.now().toString(), type: 'user', text: question };
     
     const isAnalysisRequest = question.toLowerCase().includes('report') || question.toLowerCase().includes('analyze');
+
     const thinkingMessage: Message = { 
         id: 'thinking', 
         type: 'bot', 
-        text: 'Analyzing your health report...',
-        isLoading: true 
+        text: 'Analyzing your health report...'
     };
 
     setMessages((prev) => [...prev, userMessage, ...(isAnalysisRequest ? [thinkingMessage] : [])]);
@@ -79,14 +79,13 @@ export function Chatbot({ reportContext, formData }: ChatbotProps) {
 
       if (!response.ok) {
         const errorBody = await response.json();
-        // Handle specific safety error from the consolidated API
         if (errorBody.error === 'Inappropriate content detected') {
           toast({
             variant: "destructive",
             title: "Inappropriate Content",
             description: "Your message was blocked for safety reasons. Please rephrase it.",
           });
-          setMessages((prev) => prev.filter((m) => m.id !== userMessage.id && m.id !== 'thinking')); // Remove user and thinking message
+          setMessages((prev) => prev.filter((m) => m.id !== userMessage.id && m.id !== 'thinking'));
           setIsLoading(false);
           return;
         }
@@ -94,7 +93,7 @@ export function Chatbot({ reportContext, formData }: ChatbotProps) {
       }
       
       const responseData: ChatOutput = await response.json();
-      const botMessage: Message = { id: (Date.now() + 1).toString(), type: 'bot', text: responseData.answer };
+      const botMessage: Message = { id: (Date.now() + 1).toString(), type: 'bot', text: responseData.answer, isAnalysis: isAnalysisRequest };
       
       setMessages((prev) => {
           const newMessages = prev.filter(m => m.id !== 'thinking');
@@ -108,7 +107,7 @@ export function Chatbot({ reportContext, formData }: ChatbotProps) {
             toast({
                 variant: "destructive",
                 title: "AI Service Rate Limited",
-                description: "You've exceeded the daily usage limit for the AI service. Please try again tomorrow. For more information, visit ai.google.dev/gemini-api/docs/rate-limits.",
+                description: "You've exceeded the daily usage limit for the AI service. Please try again tomorrow.",
             });
        } else if (errorMessage.includes("503") || errorMessage.toLowerCase().includes("overloaded")) {
             toast({
@@ -129,56 +128,55 @@ export function Chatbot({ reportContext, formData }: ChatbotProps) {
     }
   };
 
+  const formatAnalysisText = (text: string) => {
+    const listItems = text.split('*').filter(item => item.trim() !== '');
+    if (listItems.length <= 1 && !text.includes('*')) {
+        return text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    }
+    const html = '<ul>' + listItems.map(item => `<li>${item.trim().replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')}</li>`).join('') + '</ul>';
+    return html;
+  };
+
   return (
     <div className="space-y-4 pt-8">
       <h4 className="text-xl font-semibold flex items-center gap-2"><Bot className="text-primary"/> Chat with your AI Assistant</h4>
       <div className="rounded-xl border bg-card p-4 space-y-4 shadow-sm">
         <ScrollArea className="h-72 pr-4">
           <div className="space-y-6">
-            {messages.length === 0 && !isLoading ? (
-                <div className="flex items-start gap-4 p-2">
-                    <Avatar className="w-9 h-9 border-2 border-primary">
-                        <div className="flex h-full w-full items-center justify-center rounded-full bg-background">
-                            <Bot className="w-5 h-5 text-primary" />
-                        </div>
-                    </Avatar>
-                    <div className="flex-1 rounded-lg bg-secondary p-4 text-sm shadow-sm">
-                       <p className="font-medium">No report loaded.</p>
-                       <p className="text-muted-foreground mt-1">Please complete a new assessment to activate the chatbot.</p>
-                    </div>
-                </div>
-            ) : (
-                 messages.map((message) => (
+            {messages.map((message) => (
+                <div
+                    key={message.id}
+                    className={cn(
+                    'flex items-start gap-4',
+                    message.type === 'user' && 'justify-end'
+                    )}
+                >
+                    {message.type === 'bot' && (
+                       <Avatar className="w-9 h-9 border-2 border-primary">
+                            <div className="flex h-full w-full items-center justify-center rounded-full bg-background">
+                                <Bot className="w-5 h-5 text-primary" />
+                            </div>
+                        </Avatar>
+                    )}
                     <div
-                        key={message.id}
-                        className={cn(
-                        'flex items-start gap-4',
-                        message.type === 'user' && 'justify-end'
-                        )}
+                    className={cn(
+                        'flex-1 max-w-[85%] rounded-xl p-4 text-sm shadow-md',
+                        message.type === 'user' ? 'bg-primary text-primary-foreground' : 'bg-background'
+                    )}
                     >
-                        {message.type === 'bot' && (
-                           <Avatar className="w-9 h-9 border-2 border-primary">
-                                <div className="flex h-full w-full items-center justify-center rounded-full bg-background">
-                                    {message.isLoading ? <Loader2 className="w-5 h-5 text-primary animate-spin" /> : <Bot className="w-5 h-5 text-primary" />}
-                                </div>
-                            </Avatar>
-                        )}
-                        <div
-                        className={cn(
-                            'flex-1 max-w-[85%] rounded-xl p-4 text-sm shadow-md',
-                            message.type === 'user' ? 'bg-primary text-primary-foreground' : 'bg-background'
-                        )}
-                        >
+                         {message.isAnalysis ? (
+                            <div className="prose prose-sm max-w-none text-foreground" dangerouslySetInnerHTML={{ __html: formatAnalysisText(message.text) }} />
+                        ) : (
                             <p className="leading-relaxed">{message.text}</p>
-                        </div>
-                        {message.type === 'user' && (
-                            <Avatar className="w-9 h-9">
-                                <AvatarFallback className="bg-primary/20 text-primary font-bold">{getInitials(user?.displayName || user?.email)}</AvatarFallback>
-                            </Avatar>
                         )}
                     </div>
-                ))
-            )}
+                    {message.type === 'user' && (
+                        <Avatar className="w-9 h-9">
+                            <AvatarFallback className="bg-primary/20 text-primary font-bold">{getInitials(user?.displayName || user?.email)}</AvatarFallback>
+                        </Avatar>
+                    )}
+                </div>
+            ))}
              {isLoading && messages.length > 0 && messages[messages.length-1].type !== 'bot' && (
                 <div className="flex items-start gap-4 p-2">
                     <Avatar className="w-9 h-9 border-2 border-primary">

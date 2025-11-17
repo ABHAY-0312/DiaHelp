@@ -41,5 +41,8 @@ service cloud.firestore {
     match /timelines/{timelineId} {
       allow read, create: if isSignedIn() && request.auth.uid == request.resource.data.userId;
     }
+    match /timelines/{wildcard=**} {
+      allow list: if isSignedIn();
+    }
   }
 }

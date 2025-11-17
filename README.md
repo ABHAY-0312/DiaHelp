@@ -10,19 +10,6 @@ By leveraging a **predictive machine learning model** and **generative AI**, Dia
 
 ---
 
-## 🚀 What's New in DiaHelper v3.0
-
-### 🤖 1. Digital Twin Simulator
-Forecast the future of your health. Simulate lifestyle changes—like a new diet or exercise routine—and get an AI-powered prediction of its impact on your risk score and key health metrics over the next year.
-
-### 🧠 2. Health Literacy Hub
-Boost your health knowledge with interactive, AI-generated quizzes on topics like blood sugar, nutrition, and insulin. Track your "Health IQ" and master the concepts crucial for a healthier life.
-
-### 💪 3. Wellness Hub
-Go beyond nutrition with a dedicated hub for fitness and overall well-being. Generate personalized weekly exercise plans tailored to your fitness level and calculate your "Metabolic Age" to understand your body's health from a new perspective.
-
-### 🏥 4. Care Finder
-Instantly locate nearby hospitals and medical centers using our AI-powered search tool. Get names, addresses, and phone numbers for care facilities in your area, right when you need them.
 
 ---
 
@@ -76,27 +63,32 @@ The logout system has been optimized for **faster session termination**, **enhan
 - Improved redirection to the login screen.  
 - Added visual feedback confirming successful logout.
 
----
 
-## 🧠 Machine Learning Model  
-
-The diabetes risk prediction model is trained on standard health datasets (like the **Pima Indians Diabetes Database**).  
-It predicts the likelihood of diabetes based on parameters like:
-- Glucose Level  
-- BMI  
-- Blood Pressure  
-- Age  
-- Insulin  
-- Gender  
 
 ---
+
+## 🚀 What's New in DiaHelper v3.0
+
+### 🤖 1. Digital Twin Simulator
+Forecast the future of your health. Simulate lifestyle changes—like a new diet or exercise routine—and get an AI-powered prediction of its impact on your risk score and key health metrics over the next year.
+
+### 🧠 2. Health Literacy Hub
+Boost your health knowledge with AI-generated quizzes on various topics like nutrition, blood sugar, and exercise. Track your "Health IQ" and see your performance over time.
+
+### 💪 3. Wellness Hub
+Get a personalized 7-day exercise plan tailored to your fitness level, or calculate your "metabolic age" to understand your body's health from a different perspective.
+
+### 🏥 4. Care Finder
+Find hospitals and medical centers near you with a simple search. The AI provides names, addresses, and phone numbers for facilities in your area.
+
 
 ## 🛠️ API and Integration Fixes (v2.0)
 
-- Resolved **API timeout issues** in predictive endpoints.  
-- Improved **response handling** between Flask API and frontend.  
-- Added **error handling** for missing or invalid input values.  
-- Enhanced **CORS configuration** for smooth client-server communication.  
+- **Improved AI Error Handling**: Implemented robust error handling for AI services. The app now gracefully manages API timeouts and "model overloaded" errors by displaying user-friendly notifications instead of crashing.
+- **Optimized Chatbot Performance**: Consolidated multiple API calls into a single, more efficient operation for the chatbot, significantly reducing response times from ~30 seconds to near-instantaneous.
+- **Fixed State Synchronization Bugs**: Resolved a critical bug causing crashes when generating a new analysis report by ensuring proper handling of `Date` and `Timestamp` objects.
+- **Corrected API Response Parsing**: Fixed multiple bugs where the app would crash due to incorrect parsing of JSON responses from the AI, ensuring reliable communication.
+- **Fixed Text Rendering**: Resolved an issue where bold text (`**...**`) in AI-generated reports and chat messages was not being rendered correctly, improving readability.
 
 ---
 

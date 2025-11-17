@@ -5,6 +5,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth } from '@/lib/firebase/config';
 import { usePathname, useRouter } from 'next/navigation';
+import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
 
 interface AuthContextType {
   user: User | null;
@@ -69,6 +70,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <AuthContext.Provider value={{ user, loading }}>
+      {process.env.NODE_ENV === 'development' && <FirebaseErrorListener />}
       {children}
     </AuthContext.Provider>
   );

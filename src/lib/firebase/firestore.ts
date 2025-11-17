@@ -11,24 +11,34 @@ import {
   Timestamp,
   limit,
 } from "firebase/firestore";
+import { errorEmitter } from "./error-emitter";
+import { FirestorePermissionError } from "./errors";
 
 export async function savePrediction(
   userId: string,
   formData: HealthFormData,
   analysisResult: AnalysisResult
 ): Promise<string> {
-  try {
-    const docRef = await addDoc(collection(db, "predictions"), {
+    const dataToSave = {
       userId,
       formData,
       ...analysisResult,
       createdAt: Timestamp.now(),
-    });
-    return docRef.id;
-  } catch (e) {
-    console.error("Error adding document: ", e);
-    throw new Error("Could not save prediction.");
-  }
+    };
+    const collectionRef = collection(db, "predictions");
+    
+    return addDoc(collectionRef, dataToSave)
+      .then(docRef => docRef.id)
+      .catch(async (serverError) => {
+        const permissionError = new FirestorePermissionError({
+          path: collectionRef.path,
+          operation: 'create',
+          requestResourceData: dataToSave,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+        // We still throw to let the calling function know something went wrong.
+        throw new Error("Could not save prediction.");
+      });
 }
 
 export async function getPredictionHistory(userId: string): Promise<PredictionRecord[]> {
@@ -58,17 +68,24 @@ export async function saveHealthLog(
   userId: string,
   logData: HealthLog
 ): Promise<string> {
-  try {
-    const docRef = await addDoc(collection(db, "healthLogs"), {
+    const dataToSave = {
       userId,
       ...logData,
       createdAt: Timestamp.now(),
-    });
-    return docRef.id;
-  } catch (e) {
-    console.error("Error adding health log: ", e);
-    throw new Error("Could not save health log.");
-  }
+    };
+    const collectionRef = collection(db, "healthLogs");
+
+    return addDoc(collectionRef, dataToSave)
+      .then(docRef => docRef.id)
+      .catch(async (serverError) => {
+        const permissionError = new FirestorePermissionError({
+          path: collectionRef.path,
+          operation: 'create',
+          requestResourceData: dataToSave,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+        throw new Error("Could not save health log.");
+      });
 }
 
 export async function getHealthLogs(userId: string): Promise<HealthLogRecord[]> {
@@ -94,17 +111,24 @@ export async function getHealthLogs(userId: string): Promise<HealthLogRecord[]> 
 }
 
 export async function saveQuizAttempt(userId: string, attemptData: QuizAttemptData): Promise<string> {
-  try {
-    const docRef = await addDoc(collection(db, "quizAttempts"), {
+    const dataToSave = {
       userId,
       ...attemptData,
       createdAt: Timestamp.now(),
-    });
-    return docRef.id;
-  } catch (e) {
-    console.error("Error saving quiz attempt: ", e);
-    throw new Error("Could not save quiz attempt.");
-  }
+    };
+    const collectionRef = collection(db, "quizAttempts");
+    
+    return addDoc(collectionRef, dataToSave)
+      .then(docRef => docRef.id)
+      .catch(async (serverError) => {
+        const permissionError = new FirestorePermissionError({
+          path: collectionRef.path,
+          operation: 'create',
+          requestResourceData: dataToSave,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+        throw new Error("Could not save quiz attempt.");
+      });
 }
 
 export async function getQuizHistory(userId: string): Promise<any[]> {
@@ -124,33 +148,47 @@ export async function getQuizHistory(userId: string): Promise<any[]> {
 }
 
 export async function saveContactQuery(userId: string, queryData: ContactQueryData): Promise<string> {
-  try {
-    const docRef = await addDoc(collection(db, "contactQueries"), {
+    const dataToSave = {
       userId,
       ...queryData,
       isRead: false,
       createdAt: Timestamp.now(),
-    });
-    return docRef.id;
-  } catch (e) {
-    console.error("Error saving contact query: ", e);
-    throw new Error("Could not save contact query.");
-  }
+    };
+    const collectionRef = collection(db, "contactQueries");
+    
+    return addDoc(collectionRef, dataToSave)
+      .then(docRef => docRef.id)
+      .catch(async (serverError) => {
+        const permissionError = new FirestorePermissionError({
+          path: collectionRef.path,
+          operation: 'create',
+          requestResourceData: dataToSave,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+        throw new Error("Could not save contact query.");
+      });
 }
 
 export async function saveHealthTimeline(userId: string, predictionId: string, timelineData: HealthTimelineData): Promise<string> {
-  try {
-    const docRef = await addDoc(collection(db, "timelines"), {
+    const dataToSave = {
       userId,
       predictionId,
       ...timelineData,
       createdAt: Timestamp.now(),
-    });
-    return docRef.id;
-  } catch (e) {
-    console.error("Error saving health timeline: ", e);
-    throw new Error("Could not save health timeline.");
-  }
+    };
+    const collectionRef = collection(db, "timelines");
+
+    return addDoc(collectionRef, dataToSave)
+      .then(docRef => docRef.id)
+      .catch(async (serverError) => {
+        const permissionError = new FirestorePermissionError({
+          path: collectionRef.path,
+          operation: 'create',
+          requestResourceData: dataToSave,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+        throw new Error("Could not save health timeline.");
+      });
 }
 
 export async function getHealthTimeline(userId: string, predictionId: string): Promise<HealthTimelineRecord | null> {

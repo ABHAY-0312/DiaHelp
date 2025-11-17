@@ -50,6 +50,14 @@ export function Chatbot({ reportContext, formData }: ChatbotProps) {
             setMessages([botMessage]);
         } catch (error: any) {
              console.error('Initial analysis error:', error);
+             const errorMessage = error.message || "";
+             if (errorMessage.includes("503") || errorMessage.toLowerCase().includes("overloaded")) {
+                toast({
+                    variant: "default",
+                    title: "AI Assistant Busy",
+                    description: "The initial summary could not be generated right now. The chat is still active.",
+                });
+            }
              // Fallback to a generic greeting if the initial analysis fails
              const fallbackMessage: Message = { 
                 id: 'initial-fallback', 

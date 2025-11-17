@@ -43,7 +43,7 @@ ${input.keyFactors.map(kf => `- **${kf}**: This factor played a significant role
 Personalized Suggestions:
 ${input.healthSuggestions.map(hs => `- ${hs}`).join('\n')}
 
-Keep the summary concise and positive. End by reminding the user to consult a healthcare professional and include a disclaimer that this is a simulated prediction for educational purposes, not a medical diagnosis.`;
+Keep the summary concise and positive. End by reminding the user to consult a healthcare professional.`;
 
     const result = await model.generateContent(prompt);
     const responseText = result.response.text();

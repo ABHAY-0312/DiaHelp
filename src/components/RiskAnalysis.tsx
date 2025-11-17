@@ -155,16 +155,13 @@ const ShapAnalysisChart = ({ shapValues }: { shapValues: { name: string; value: 
   );
 };
 
-const HealthTimeline = ({ user, result, isPdfMode }: { user: User, result: PredictionRecord, isPdfMode?: boolean }) => {
-    const [timelineData, setTimelineData] = useState<GenerateTimelineOutput | null>(null);
-    const [isTimelineLoading, setIsTimelineLoading] = useState(false);
-    const [hasFetched, setHasFetched] = useState(false);
+const HealthTimeline = ({ user, result, isPdfMode, timelineData, setTimelineData, isLoading, setIsLoading }: { user: User, result: PredictionRecord, isPdfMode?: boolean, timelineData: GenerateTimelineOutput | null, setTimelineData: (data: GenerateTimelineOutput | null) => void, isLoading: boolean, setIsLoading: (loading: boolean) => void }) => {
     const { toast } = useToast();
+    const hasFetched = useRef(false);
 
     const fetchExistingTimeline = useCallback(async () => {
-        if (!user) return;
-        setIsTimelineLoading(true);
-        setHasFetched(true);
+        if (!user || !result.id) return;
+        setIsLoading(true);
         try {
             const existingTimeline = await getHealthTimeline(user.uid, result.id);
             if (existingTimeline) {
@@ -172,19 +169,20 @@ const HealthTimeline = ({ user, result, isPdfMode }: { user: User, result: Predi
             }
         } catch (error) {
             console.error("Error fetching existing timeline", error);
-            // Don't toast here, allow user to generate a new one
         } finally {
-            setIsTimelineLoading(false);
+            setIsLoading(false);
+            hasFetched.current = true;
         }
-    }, [user, result.id]);
+    }, [user, result.id, setIsLoading, setTimelineData]);
 
     useEffect(() => {
-        // Fetch existing timeline when component mounts or result changes
-        fetchExistingTimeline();
-    }, [fetchExistingTimeline]);
+        if (!timelineData && !hasFetched.current) {
+            fetchExistingTimeline();
+        }
+    }, [fetchExistingTimeline, timelineData]);
 
     const handleGenerateTimeline = useCallback(async () => {
-        setIsTimelineLoading(true);
+        setIsLoading(true);
         setTimelineData(null);
         try {
             const timelineInput: GenerateTimelineInput = {
@@ -204,7 +202,6 @@ const HealthTimeline = ({ user, result, isPdfMode }: { user: User, result: Predi
 
             const responseData: GenerateTimelineOutput = await response.json();
             setTimelineData(responseData);
-            // Save the newly generated timeline to Firestore
             await saveHealthTimeline(user.uid, result.id, responseData);
 
         } catch (error: any) {
@@ -214,7 +211,7 @@ const HealthTimeline = ({ user, result, isPdfMode }: { user: User, result: Predi
                 toast({
                     variant: "destructive",
                     title: "AI Service Rate Limited",
-                    description: "You've exceeded the daily usage limit for the AI service. Please try again tomorrow.",
+                    description: "You've exceeded the daily usage limit for the AI service. Please try again tomorrow. For more information, visit ai.google.dev/gemini-api/docs/rate-limits.",
                 });
             } else if (errorMessage.includes("503") || errorMessage.toLowerCase().includes("overloaded")) {
                 toast({
@@ -226,11 +223,11 @@ const HealthTimeline = ({ user, result, isPdfMode }: { user: User, result: Predi
                 toast({ variant: "destructive", title: "Timeline Error", description: "Could not generate the health timeline. Please try again." });
             }
         } finally {
-            setIsTimelineLoading(false);
+            setIsLoading(false);
         }
-    }, [result, user, toast]);
+    }, [result, user, toast, setIsLoading, setTimelineData]);
 
-    if (!hasFetched || isTimelineLoading) {
+    if (isLoading && !isPdfMode) {
         return (
              <div className="flex items-center justify-center p-12 border-2 border-dashed rounded-lg">
                 <Loader2 className="w-8 h-8 mr-4 animate-spin text-primary" />
@@ -245,7 +242,7 @@ const HealthTimeline = ({ user, result, isPdfMode }: { user: User, result: Predi
                 <CalendarClock className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
                 <h4 className="text-lg font-semibold">Predict Your Future Health</h4>
                 <p className="text-sm text-muted-foreground mt-1 mb-4">See a potential timeline of your health based on your current data if no lifestyle changes are made.</p>
-                <Button onClick={handleGenerateTimeline} disabled={isTimelineLoading}>
+                <Button onClick={handleGenerateTimeline} disabled={isLoading}>
                     <Bot className="mr-2 h-4 w-4" /> Generate Timeline
                 </Button>
             </div>
@@ -296,33 +293,40 @@ const clinicalInputsConfig = [
 
 export function RiskAnalysis({ user, result, isLoading }: RiskAnalysisProps) {
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isPdfRenderMode, setIsPdfRenderMode] = useState(false);
+  const [timelineData, setTimelineData] = useState<GenerateTimelineOutput | null>(null);
+  const [isTimelineLoading, setIsTimelineLoading] = useState(false);
+
   const printRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
+  useEffect(() => {
+    // Clear timeline data when the main result changes
+    setTimelineData(null);
+  }, [result]);
+
   const handleDownloadPdf = async () => {
-    const reportElement = printRef.current;
-    if (!reportElement || !user) {
+    if (!printRef.current || !user || !result) {
         toast({
             variant: "destructive",
             title: "Download Error",
-            description: "Could not find the report content to download.",
+            description: "Report content is not available.",
         });
         return;
     }
 
     setIsDownloading(true);
+    setIsPdfRenderMode(true); // Mount the hidden component
+
+    // Brief delay to allow the component and its charts to render
+    await new Promise(resolve => setTimeout(resolve, 500));
 
     try {
+        const reportElement = printRef.current;
         const canvas = await html2canvas(reportElement, {
-            scale: 2, 
+            scale: 2,
             useCORS: true,
             logging: false,
-            onclone: (document) => {
-                const clonedReport = document.getElementById('pdf-report');
-                if (clonedReport) {
-                    clonedReport.style.display = 'block';
-                }
-            }
         });
 
         const imgData = canvas.toDataURL('image/png');
@@ -333,7 +337,7 @@ export function RiskAnalysis({ user, result, isLoading }: RiskAnalysisProps) {
         });
 
         pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
-        pdf.save(`DiaHelper-Report-${result?.patientName.replace(' ', '_')}.pdf`);
+        pdf.save(`DiaHelper-Report-${result.patientName.replace(' ', '_')}.pdf`);
 
     } catch (error) {
         console.error("Error generating PDF:", error);
@@ -344,6 +348,7 @@ export function RiskAnalysis({ user, result, isLoading }: RiskAnalysisProps) {
         });
     } finally {
         setIsDownloading(false);
+        setIsPdfRenderMode(false); // Unmount the hidden component
     }
   };
 
@@ -402,7 +407,7 @@ export function RiskAnalysis({ user, result, isLoading }: RiskAnalysisProps) {
                          <HealthSuggestions suggestions={result.healthSuggestions} />
                     </TabsContent>
                     <TabsContent value="timeline" className="mt-4">
-                         <HealthTimeline user={user} result={result} />
+                         <HealthTimeline user={user} result={result} timelineData={timelineData} setTimelineData={setTimelineData} isLoading={isTimelineLoading} setIsLoading={setIsTimelineLoading} />
                     </TabsContent>
                     <TabsContent value="chat" className="mt-4">
                         <Chatbot reportContext={result.report} />
@@ -419,7 +424,8 @@ export function RiskAnalysis({ user, result, isLoading }: RiskAnalysisProps) {
     </Card>
 
     {/* Hidden div for PDF generation */}
-    <div id="pdf-report" ref={printRef} className="absolute -left-[9999px] top-0 w-[800px] bg-background text-foreground p-8" style={{ display: 'none' }}>
+    {isPdfRenderMode && (
+      <div id="pdf-report" ref={printRef} className="absolute left-0 top-0 w-[800px] bg-background text-foreground p-8" style={{ zIndex: -1 }}>
         {/* 1. Header */}
         <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-primary">Diabetes Risk Assessment Report</h1>
@@ -462,7 +468,7 @@ export function RiskAnalysis({ user, result, isLoading }: RiskAnalysisProps) {
                         {clinicalInputsConfig.map(config => (
                              <tr key={config.key} className="border-b last:border-none">
                                 <td className="p-2">{config.label}</td>
-                                <td className="p-2 font-mono capitalize">{result.formData[config.key]} {config.unit}</td>
+                                <td className="p-2 font-mono capitalize">{String(result.formData[config.key as keyof typeof result.formData])} {config.unit}</td>
                                 <td className="p-2 font-mono">{config.norm}</td>
                              </tr>
                         ))}
@@ -490,7 +496,7 @@ export function RiskAnalysis({ user, result, isLoading }: RiskAnalysisProps) {
         {/* 5. Health Timeline */}
         <div className="mb-8 page-break-before">
             <h2 className="text-2xl font-semibold mb-4">Health Timeline Projection</h2>
-            <HealthTimeline user={user} result={result} isPdfMode={true} />
+            <HealthTimeline user={user} result={result} isPdfMode={true} timelineData={timelineData} setTimelineData={setTimelineData} isLoading={isTimelineLoading} setIsLoading={setIsTimelineLoading} />
         </div>
 
         {/* 6. Recommendations */}
@@ -527,7 +533,8 @@ export function RiskAnalysis({ user, result, isLoading }: RiskAnalysisProps) {
         <div className="text-xs text-muted-foreground text-center pt-4 border-t">
             <p><strong>Disclaimer:</strong> This is a simulated prediction for educational and motivational purposes only and is not a real medical diagnosis. The risk score is an estimate based on a statistical model and does not replace a professional medical evaluation. Please consult with a qualified healthcare provider to discuss your results and for any medical advice.</p>
         </div>
-    </div>
+      </div>
+    )}
     </>
   );
 }
@@ -567,3 +574,4 @@ const LoadingSkeleton = () => (
       </CardFooter>
     </Card>
 )
+

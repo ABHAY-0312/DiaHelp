@@ -89,7 +89,7 @@ export function Chatbot({ reportContext, formData }: ChatbotProps) {
           setIsLoading(false);
           return;
         }
-        throw new Error(errorBody.message || 'An unknown error occurred');
+        throw new Error(JSON.stringify(errorBody) || 'An unknown error occurred');
       }
       
       const responseData: ChatOutput = await response.json();
@@ -129,12 +129,17 @@ export function Chatbot({ reportContext, formData }: ChatbotProps) {
   };
 
   const formatAnalysisText = (text: string) => {
-    const listItems = text.split('*').filter(item => item.trim() !== '');
-    if (listItems.length <= 1 && !text.includes('*')) {
-        return text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    // Convert **text** to <strong>text</strong>
+    let formattedText = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    
+    // Check if the text is a list (contains '*' as a list item marker)
+    if (formattedText.includes('* ')) {
+        const listItems = formattedText.split('* ').filter(item => item.trim() !== '');
+        const html = '<ul>' + listItems.map(item => `<li>${item.trim()}</li>`).join('') + '</ul>';
+        return html;
     }
-    const html = '<ul>' + listItems.map(item => `<li>${item.trim().replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')}</li>`).join('') + '</ul>';
-    return html;
+    
+    return formattedText;
   };
 
   return (
@@ -165,7 +170,7 @@ export function Chatbot({ reportContext, formData }: ChatbotProps) {
                     )}
                     >
                          {message.isAnalysis ? (
-                            <div className="prose prose-sm max-w-none text-foreground" dangerouslySetInnerHTML={{ __html: formatAnalysisText(message.text) }} />
+                            <div className="prose prose-sm max-w-none text-foreground prose-li:my-1" dangerouslySetInnerHTML={{ __html: formatAnalysisText(message.text) }} />
                         ) : (
                             <p className="leading-relaxed">{message.text}</p>
                         )}
@@ -177,7 +182,7 @@ export function Chatbot({ reportContext, formData }: ChatbotProps) {
                     )}
                 </div>
             ))}
-             {isLoading && messages.length > 0 && messages[messages.length-1].type !== 'bot' && (
+             {isLoading && messages.length > 0 && messages[messages.length-1].id !== 'thinking' && messages[messages.length-1].type !== 'bot' &&(
                 <div className="flex items-start gap-4 p-2">
                     <Avatar className="w-9 h-9 border-2 border-primary">
                         <div className="flex h-full w-full items-center justify-center rounded-full bg-background">

@@ -23,6 +23,7 @@ interface Message {
   id: string;
   type: 'user' | 'bot';
   text: string;
+  isLoading?: boolean;
 }
 
 export function Chatbot({ reportContext, formData }: ChatbotProps) {
@@ -92,7 +93,17 @@ export function Chatbot({ reportContext, formData }: ChatbotProps) {
 
     setIsLoading(true);
     const userMessage: Message = { id: Date.now().toString(), type: 'user', text: question };
-    setMessages((prev) => [...prev, userMessage]);
+    
+    const isAnalysisRequest = question.toLowerCase().includes('report') || question.toLowerCase().includes('analyze');
+    const thinkingMessage: Message = { 
+        id: 'thinking', 
+        type: 'bot', 
+        text: 'Analyzing your health report...',
+        isLoading: true 
+    };
+
+    setMessages((prev) => [...prev, userMessage, ...(isAnalysisRequest ? [thinkingMessage] : [])]);
+    
     setInputValue('');
 
     try {
@@ -113,7 +124,7 @@ export function Chatbot({ reportContext, formData }: ChatbotProps) {
             title: "Inappropriate Content",
             description: "Your message was blocked for safety reasons. Please rephrase it.",
           });
-          setMessages((prev) => prev.filter((m) => m.id !== userMessage.id)); // Remove user message
+          setMessages((prev) => prev.filter((m) => m.id !== userMessage.id && m.id !== 'thinking')); // Remove user and thinking message
           setIsLoading(false);
           return;
         }
@@ -122,7 +133,11 @@ export function Chatbot({ reportContext, formData }: ChatbotProps) {
       
       const responseData: ChatOutput = await response.json();
       const botMessage: Message = { id: (Date.now() + 1).toString(), type: 'bot', text: responseData.answer };
-      setMessages((prev) => [...prev, botMessage]);
+      
+      setMessages((prev) => {
+          const newMessages = prev.filter(m => m.id !== 'thinking');
+          return [...newMessages, botMessage];
+      });
 
     } catch (error: any) {
       console.error('Chatbot error:', error);
@@ -146,7 +161,7 @@ export function Chatbot({ reportContext, formData }: ChatbotProps) {
                 description: 'Sorry, I had trouble getting a response. Please try again.',
             });
        }
-      setMessages((prev) => prev.filter((m) => m.id !== userMessage.id));
+      setMessages((prev) => prev.filter((m) => m.id !== userMessage.id && m.id !== 'thinking'));
     } finally {
       setIsLoading(false);
     }
@@ -182,7 +197,7 @@ export function Chatbot({ reportContext, formData }: ChatbotProps) {
                         {message.type === 'bot' && (
                            <Avatar className="w-9 h-9 border-2 border-primary">
                                 <div className="flex h-full w-full items-center justify-center rounded-full bg-background">
-                                    <Bot className="w-5 h-5 text-primary" />
+                                    {message.isLoading ? <Loader2 className="w-5 h-5 text-primary animate-spin" /> : <Bot className="w-5 h-5 text-primary" />}
                                 </div>
                             </Avatar>
                         )}
@@ -202,7 +217,7 @@ export function Chatbot({ reportContext, formData }: ChatbotProps) {
                     </div>
                 ))
             )}
-             {isLoading && (
+             {isLoading && messages.length > 0 && messages[messages.length-1].type !== 'bot' && (
                 <div className="flex items-start gap-4 p-2">
                     <Avatar className="w-9 h-9 border-2 border-primary">
                         <div className="flex h-full w-full items-center justify-center rounded-full bg-background">
@@ -238,4 +253,3 @@ export function Chatbot({ reportContext, formData }: ChatbotProps) {
     </div>
   );
 }
-

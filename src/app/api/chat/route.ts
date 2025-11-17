@@ -57,23 +57,19 @@ ${JSON.stringify(formData, null, 2)}
 ---
 `;
     } else {
-      prompt = `You are DiaHelper's digital health assistant. Use the provided Report Context and the user's Health Data as the primary sources to answer the user's question.
-If the user asks for a general health term definition (e.g., "What is BMI?"), provide a clear, direct answer. Maintain a direct, empowering, and encouraging tone. Avoid clinical jargon.
+      prompt = `You are DiaHelper's digital health assistant. Your primary role is to answer the user's question accurately and concisely using the provided context.
+Maintain a direct, empowering, and encouraging tone. Avoid clinical jargon.
 
-Report Context:
----
+**Primary Context: Report Summary**
 ${reportContext}
----
 
-User's Health Data:
----
+**Secondary Context: User's Raw Health Data**
 ${JSON.stringify(formData, null, 2)}
----
 
-User's Question:
----
-${question}
----
+**User's Question:**
+"${question}"
+
+Based on all the provided information, answer the user's question. If the question is about a specific value (e.g., "what was my BMI?"), find it in the raw health data and provide it.
 `;
     }
 
@@ -104,4 +100,3 @@ ${question}
     return NextResponse.json({ error: 'Internal Server Error', message: e.message || 'An unexpected error occurred.' }, { status: 500 });
   }
 }
-

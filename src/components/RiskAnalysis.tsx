@@ -27,7 +27,6 @@ interface RiskAnalysisProps {
   user: User | null;
   result: PredictionRecord | null;
   isLoading: boolean;
-  onCalculateRisk: (data: any) => { riskScore: number; shapValues: { name: string; value: number }[] };
 }
 
 const RiskScoreGauge = ({ score }: { score: number }) => {
@@ -199,7 +198,7 @@ const HealthTimeline = ({ user, result, isPdfMode, timelineData, setTimelineData
                 toast({
                     variant: "destructive",
                     title: "AI Service Rate Limited",
-                    description: "You've exceeded the daily usage limit for the AI service. Please try again tomorrow. For more information, visit ai.google.dev/gemini-api/docs/rate-limits.",
+                    description: "You've exceeded the daily usage limit for the AI service. Please try again tomorrow.",
                 });
             } else if (errorMessage.includes("503") || errorMessage.toLowerCase().includes("overloaded")) {
                 toast({
@@ -281,19 +280,11 @@ const clinicalInputsConfig = [
 
 export function RiskAnalysis({ user, result, isLoading }: RiskAnalysisProps) {
   const [isDownloading, setIsDownloading] = useState(false);
-  const [isPdfRenderMode, setIsPdfRenderMode] = useState(false);
-  const [timelineData, setTimelineData] = useState<GenerateTimelineOutput | HealthTimelineRecord | null>(null);
-  const [isTimelineLoading, setIsTimelineLoading] = useState(false);
-
   const printRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
-  useEffect(() => {
-    setTimelineData(null);
-  }, [result]);
-
   const handleDownloadPdf = async () => {
-    if (!user || !result) {
+    if (!result || !user) {
         toast({
             variant: "destructive",
             title: "Download Error",
@@ -301,66 +292,46 @@ export function RiskAnalysis({ user, result, isLoading }: RiskAnalysisProps) {
         });
         return;
     }
-
+    
     setIsDownloading(true);
     
-    let currentTimelineData = timelineData;
-    if (!currentTimelineData && result.id) {
-        try {
-            const existingTimeline = await getHealthTimeline(user.uid, result.id);
-            if (existingTimeline) {
-                setTimelineData(existingTimeline);
-                currentTimelineData = existingTimeline;
-            } else {
-                 toast({ title: "Timeline Info", description: "Fetching timeline for PDF. This may take a moment."});
-            }
-        } catch (e) {
-             toast({ variant: "destructive", title: "Timeline Error", description: "Could not fetch timeline for PDF." });
-             setIsDownloading(false);
-             return;
-        }
+    const element = printRef.current;
+    if (!element) {
+        toast({
+            variant: "destructive",
+            title: "Download Error",
+            description: "Could not prepare the report for download.",
+        });
+        setIsDownloading(false);
+        return;
     }
 
-    setIsPdfRenderMode(true); 
+    try {
+        const canvas = await html2canvas(element, {
+            scale: 2,
+            useCORS: true,
+            logging: false,
+        });
 
-    setTimeout(async () => {
-        if (!printRef.current) {
-            toast({ variant: "destructive", title: "Download Error", description: "Could not prepare the report for download." });
-            setIsDownloading(false);
-            setIsPdfRenderMode(false);
-            return;
-        }
+        const imgData = canvas.toDataURL('image/png');
+        const pdf = new jsPDF({
+            orientation: 'p',
+            unit: 'px',
+            format: [canvas.width, canvas.height],
+        });
 
-        try {
-            const reportElement = printRef.current;
-            const canvas = await html2canvas(reportElement, {
-                scale: 2,
-                useCORS: true,
-                logging: false,
-            });
-
-            const imgData = canvas.toDataURL('image/png');
-            const pdf = new jsPDF({
-                orientation: 'p',
-                unit: 'px',
-                format: [canvas.width, canvas.height],
-            });
-
-            pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
-            pdf.save(`DiaHelper-Report-${result.patientName.replace(' ', '_')}.pdf`);
-
-        } catch (error) {
-            console.error("Error generating PDF:", error);
-            toast({
-                variant: "destructive",
-                title: "Download Failed",
-                description: "There was an error creating the PDF file.",
-            });
-        } finally {
-            setIsDownloading(false);
-            setIsPdfRenderMode(false);
-        }
-    }, 2000); 
+        pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+        pdf.save(`DiaHelper-Report-${result.patientName.replace(' ', '_')}.pdf`);
+    } catch (error) {
+        console.error("Error generating PDF:", error);
+        toast({
+            variant: "destructive",
+            title: "Download Failed",
+            description: "There was an error creating the PDF file.",
+        });
+    } finally {
+        setIsDownloading(false);
+    }
   };
 
 
@@ -383,62 +354,60 @@ export function RiskAnalysis({ user, result, isLoading }: RiskAnalysisProps) {
   return (
     <>
     <Card className="w-full h-full overflow-hidden shadow-lg border-primary/20">
-        <div className="printable-area">
-            <CardHeader className="pb-4">
-                <CardTitle className="text-2xl">Risk Assessment for {result.patientName}</CardTitle>
-                <CardDescription>Generated on {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-8">
-                <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-center">
-                    <div className="lg:col-span-2">
-                        <RiskScoreGauge score={result.riskScore} />
-                    </div>
-                    <div className="lg:col-span-3 w-full space-y-2">
-                        <h4 className="text-xl font-semibold">Risk Factor Analysis</h4>
-                        <p className="text-sm text-muted-foreground">How each factor contributes to your score.</p>
-                       <ShapAnalysisChart shapValues={result.shapValues} />
-                    </div>
+        <CardHeader className="pb-4">
+            <CardTitle className="text-2xl">Risk Assessment for {result.patientName}</CardTitle>
+            <CardDescription>Generated on {new Date(result.createdAt.seconds * 1000).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-8">
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-center">
+                <div className="lg:col-span-2">
+                    <RiskScoreGauge score={result.riskScore} />
                 </div>
-                
-                <Tabs defaultValue="report" className="w-full no-print">
-                    <TabsList className="grid w-full h-auto grid-cols-2 md:grid-cols-4">
-                        <TabsTrigger value="report"><Bot className="mr-2 h-4 w-4"/> AI Report</TabsTrigger>
-                        <TabsTrigger value="suggestions"><Activity className="mr-2 h-4 w-4"/> Suggestions</TabsTrigger>
-                        <TabsTrigger value="timeline"><CalendarClock className="mr-2 h-4 w-4"/> Timeline</TabsTrigger>
-                        <TabsTrigger value="chat"><MessageSquare className="mr-2 h-4 w-4"/> Chat</TabsTrigger>
-                    </TabsList>
-                    <TabsContent value="report" className="mt-4">
-                        <div className="p-5 border rounded-xl bg-secondary/50 prose prose-base max-w-none text-foreground prose-p:text-foreground prose-strong:text-foreground">
-                            {result.report.split('\n\n').map((paragraph, index) => (
-                                <p key={index}>{paragraph}</p>
-                            ))}
-                        </div>
-                    </TabsContent>
-                    <TabsContent value="suggestions" className="mt-4">
-                         <HealthSuggestions suggestions={result.healthSuggestions} />
-                    </TabsContent>
-                    <TabsContent value="timeline" className="mt-4">
-                         <HealthTimeline user={user} result={result} timelineData={timelineData} setTimelineData={setTimelineData} isLoading={isTimelineLoading} setIsLoading={setIsTimelineLoading} />
-                    </TabsContent>
-                    <TabsContent value="chat" className="mt-4">
-                        <Chatbot reportContext={result.report} />
-                    </TabsContent>
-                </Tabs>
-            </CardContent>
-        </div>
-        <CardFooter className="px-6 pb-6 mt-4 no-print">
+                <div className="lg:col-span-3 w-full space-y-2">
+                    <h4 className="text-xl font-semibold">Risk Factor Analysis</h4>
+                    <p className="text-sm text-muted-foreground">How each factor contributes to your score.</p>
+                   <ShapAnalysisChart shapValues={result.shapValues} />
+                </div>
+            </div>
+            
+            <Tabs defaultValue="report" className="w-full">
+                <TabsList className="grid w-full h-auto grid-cols-2 md:grid-cols-4">
+                    <TabsTrigger value="report"><Bot className="mr-2 h-4 w-4"/> AI Report</TabsTrigger>
+                    <TabsTrigger value="suggestions"><Activity className="mr-2 h-4 w-4"/> Suggestions</TabsTrigger>
+                    <TabsTrigger value="timeline"><CalendarClock className="mr-2 h-4 w-4"/> Timeline</TabsTrigger>
+                    <TabsTrigger value="chat"><MessageSquare className="mr-2 h-4 w-4"/> Chat</TabsTrigger>
+                </TabsList>
+                <TabsContent value="report" className="mt-4">
+                    <div className="p-5 border rounded-xl bg-secondary/50 prose prose-base max-w-none text-foreground prose-p:text-foreground prose-strong:text-foreground">
+                        {result.report.split('\n\n').map((paragraph, index) => (
+                            <p key={index}>{paragraph}</p>
+                        ))}
+                    </div>
+                </TabsContent>
+                <TabsContent value="suggestions" className="mt-4">
+                     <HealthSuggestions suggestions={result.healthSuggestions} />
+                </TabsContent>
+                <TabsContent value="timeline" className="mt-4">
+                     <HealthTimelineWrapper user={user} result={result} />
+                </TabsContent>
+                <TabsContent value="chat" className="mt-4">
+                    <Chatbot reportContext={result.report} />
+                </TabsContent>
+            </Tabs>
+        </CardContent>
+        <CardFooter className="px-6 pb-6 mt-4">
             <Button onClick={handleDownloadPdf} size="lg" className="w-full font-bold text-base" disabled={isDownloading}>
                 {isDownloading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Download className="mr-2 h-5 w-5" />}
                 {isDownloading ? 'Generating PDF...' : 'Download Report'}</Button>
         </CardFooter>
     </Card>
 
-    {isPdfRenderMode && (
+    <div className="hidden">
       <div id="pdf-report" ref={printRef} className="absolute left-0 top-0 w-[800px] bg-background text-foreground p-8" style={{ zIndex: -1 }}>
         <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-primary">Diabetes Risk Assessment Report</h1>
             <p className="text-lg">For: {result.patientName}</p>
-            <p className="text-sm text-muted-foreground">Generated on: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+            <p className="text-sm text-muted-foreground">Generated on: {new Date(result.createdAt.seconds * 1000).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
         </div>
 
         <div className="mb-8 p-4 border rounded-lg">
@@ -497,10 +466,10 @@ export function RiskAnalysis({ user, result, isLoading }: RiskAnalysisProps) {
                 <ShapAnalysisChart shapValues={result.shapValues} />
             </div>
         </div>
-
+        
         <div className="mb-8 page-break-before">
             <h2 className="text-2xl font-semibold mb-4">Health Timeline Projection</h2>
-            <HealthTimeline user={user} result={result} isPdfMode={true} timelineData={timelineData} setTimelineData={setTimelineData} isLoading={isTimelineLoading} setIsLoading={setIsTimelineLoading} />
+            <HealthTimelineWrapper user={user} result={result} isPdfMode={true} />
         </div>
 
          <div className="mb-8">
@@ -535,9 +504,32 @@ export function RiskAnalysis({ user, result, isLoading }: RiskAnalysisProps) {
             <p><strong>Disclaimer:</strong> This is a simulated prediction for educational and motivational purposes only and is not a real medical diagnosis. The risk score is an estimate based on a statistical model and does not replace a professional medical evaluation. Please consult with a qualified healthcare provider to discuss your results and for any medical advice.</p>
         </div>
       </div>
-    )}
+    </div>
     </>
   );
+}
+
+// Wrapper component to manage state for HealthTimeline
+function HealthTimelineWrapper({ user, result, isPdfMode }: { user: User, result: PredictionRecord, isPdfMode?: boolean }) {
+    const [timelineData, setTimelineData] = useState<GenerateTimelineOutput | HealthTimelineRecord | null>(null);
+    const [isTimelineLoading, setIsTimelineLoading] = useState(false);
+    
+    // Reset timeline data when the main result changes
+    useEffect(() => {
+        setTimelineData(null);
+    }, [result]);
+    
+    return (
+        <HealthTimeline
+            user={user}
+            result={result}
+            isPdfMode={isPdfMode}
+            timelineData={timelineData}
+            setTimelineData={setTimelineData}
+            isLoading={isTimelineLoading}
+            setIsLoading={setIsTimelineLoading}
+        />
+    );
 }
 
 const LoadingSkeleton = () => (
@@ -575,3 +567,5 @@ const LoadingSkeleton = () => (
       </CardFooter>
     </Card>
 )
+
+    

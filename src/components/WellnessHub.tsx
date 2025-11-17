@@ -327,9 +327,30 @@ function HealthAssistant() {
           body: JSON.stringify(chatInput),
       });
 
-      if (!response.ok) {
-        throw new Error(await response.text());
-      }
+        if (!response.ok) {
+            const errorBody = await response.json();
+            if (errorBody.error === 'Inappropriate content detected') {
+                toast({
+                    variant: "destructive",
+                    title: "Inappropriate Content",
+                    description: "Your message was blocked for safety reasons. Please rephrase it.",
+                });
+                setMessages((prev) => prev.filter((m) => m.id !== userMessage.id));
+                setIsLoading(false);
+                return;
+            }
+             if (response.status === 503 || (errorBody.message && errorBody.message.toLowerCase().includes("overloaded"))) {
+                toast({
+                    variant: "destructive",
+                    title: "AI Service Busy",
+                    description: "The health assistant is currently experiencing high demand. Please try again in a moment.",
+                });
+                setMessages((prev) => prev.filter((m) => m.id !== userMessage.id));
+                setIsLoading(false);
+                return;
+            }
+            throw new Error(errorBody.message || 'An unknown error occurred');
+        }
       
       const responseData: HealthAssistantChatOutput = await response.json();
       const botMessage: Message = { id: (Date.now() + 1).toString(), type: 'bot', text: responseData.answer };
@@ -342,12 +363,6 @@ function HealthAssistant() {
                 variant: "destructive",
                 title: "AI Service Rate Limited",
                 description: "You've exceeded the daily usage limit for the AI service. Please try again tomorrow.",
-            });
-        } else if (errorMessage.includes("503") || errorMessage.toLowerCase().includes("overloaded")) {
-            toast({
-                variant: "destructive",
-                title: "AI Service Busy",
-                description: "The health assistant is currently experiencing high demand. Please try again in a moment.",
             });
         } else {
             toast({
@@ -400,7 +415,7 @@ function HealthAssistant() {
                                 'flex-1 max-w-[85%] rounded-xl p-4 text-sm shadow-md',
                                 message.type === 'user' ? 'bg-primary text-primary-foreground' : 'bg-background'
                             )}>
-                                <p className="leading-relaxed whitespace-pre-wrap">{message.text}</p>
+                                <p className="leading-relaxed whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: message.text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} />
                             </div>
                             {message.type === 'user' && (
                                 <Avatar className="w-9 h-9">

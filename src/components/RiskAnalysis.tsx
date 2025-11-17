@@ -394,17 +394,12 @@ export function RiskAnalysis({ user, result, isLoading }: RiskAnalysisProps) {
   }
 
   const getResultDate = (result: PredictionRecord): Date => {
-    if (!result.createdAt) {
-        return new Date();
+    if (result.createdAt && typeof (result.createdAt as any).toDate === 'function') {
+        return (result.createdAt as any).toDate();
     }
     if (result.createdAt instanceof Date) {
         return result.createdAt;
     }
-    // Firestore Timestamp
-    if (typeof (result.createdAt as any).seconds === 'number') {
-        return (result.createdAt as any).toDate();
-    }
-    // Fallback to now if something is wrong
     return new Date();
   }
 
@@ -437,7 +432,7 @@ export function RiskAnalysis({ user, result, isLoading }: RiskAnalysisProps) {
                     <TabsTrigger value="chat"><MessageSquare className="mr-2 h-4 w-4"/> Chat</TabsTrigger>
                 </TabsList>
                 <TabsContent value="report" className="mt-4">
-                    <div className="p-5 border rounded-xl bg-secondary/50 prose prose-base max-w-none text-foreground prose-p:text-foreground prose-strong:text-foreground"
+                     <div className="p-5 border rounded-xl bg-secondary/50 prose prose-base max-w-none text-foreground prose-p:text-foreground prose-strong:text-foreground"
                          dangerouslySetInnerHTML={{ __html: result.report.replace(/\n\n/g, '<br/><br/>') }}
                     />
                 </TabsContent>

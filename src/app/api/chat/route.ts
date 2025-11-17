@@ -10,6 +10,7 @@ import {
 const ChatInputSchema = z.object({
   question: z.string(),
   reportContext: z.string(),
+  formData: z.record(z.any()).optional(),
 });
 export type ChatInput = z.infer<typeof ChatInputSchema>;
 
@@ -34,9 +35,29 @@ const model = genAI.getGenerativeModel({
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { question, reportContext } = ChatInputSchema.parse(body);
+    const { question, reportContext, formData } = ChatInputSchema.parse(body);
+    
+    let prompt: string;
+    
+    if (question === 'INITIAL_ANALYSIS') {
+      prompt = `You are DiaHelper's digital health assistant. A new health report has just been generated for the user.
+Provide a brief, encouraging, and insightful summary of their results as the opening message.
+Start by greeting the user. Mention their risk score and what it means (e.g., "which is in the low/medium/high range").
+Briefly touch on one or two of the key risk factors from their data.
+End by inviting the user to ask any questions they have about their report or health in general.
 
-    const prompt = `You are DiaHelper's digital health assistant. Use the provided Report Context as the primary source to answer the user's question.
+Report Summary:
+---
+${reportContext}
+---
+
+User's Health Data:
+---
+${JSON.stringify(formData, null, 2)}
+---
+`;
+    } else {
+      prompt = `You are DiaHelper's digital health assistant. Use the provided Report Context and the user's Health Data as the primary sources to answer the user's question.
 If the user asks for a general health term definition (e.g., "What is BMI?"), provide a clear, direct answer. Maintain a direct, empowering, and encouraging tone. Avoid clinical jargon.
 
 Report Context:
@@ -44,11 +65,18 @@ Report Context:
 ${reportContext}
 ---
 
+User's Health Data:
+---
+${JSON.stringify(formData, null, 2)}
+---
+
 User's Question:
 ---
 ${question}
 ---
 `;
+    }
+
 
     const result = await model.generateContent(prompt);
     const responseText = result.response.text();

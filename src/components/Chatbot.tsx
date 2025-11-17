@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Bot, CornerDownLeft, Loader2, User } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -12,9 +12,11 @@ import { useAuth } from '@/context/AuthContext';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { cn } from '@/lib/utils';
 import type { ChatInput, ChatOutput } from '@/app/api/chat/route';
+import type { HealthFormData } from '@/lib/types';
 
 interface ChatbotProps {
   reportContext: string;
+  formData: HealthFormData;
 }
 
 interface Message {
@@ -23,12 +25,48 @@ interface Message {
   text: string;
 }
 
-export function Chatbot({ reportContext }: ChatbotProps) {
+export function Chatbot({ reportContext, formData }: ChatbotProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
+
+  useEffect(() => {
+    const getInitialAnalysis = async () => {
+        setIsLoading(true);
+        try {
+            const chatInput: ChatInput = { question: 'INITIAL_ANALYSIS', reportContext, formData };
+            const response = await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(chatInput),
+            });
+            if (!response.ok) {
+              throw new Error(await response.text());
+            }
+            const responseData: ChatOutput = await response.json();
+            const botMessage: Message = { id: 'initial-analysis', type: 'bot', text: responseData.answer };
+            setMessages([botMessage]);
+        } catch (error: any) {
+             console.error('Initial analysis error:', error);
+             // Fallback to a generic greeting if the initial analysis fails
+             const fallbackMessage: Message = { 
+                id: 'initial-fallback', 
+                type: 'bot', 
+                text: "Hello! I'm here to help. You can ask me to explain your report, or for general health tips." 
+             };
+             setMessages([fallbackMessage]);
+        } finally {
+            setIsLoading(false);
+        }
+    }
+    
+    if (reportContext && formData) {
+      getInitialAnalysis();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reportContext, formData]);
 
   const getInitials = (name: string | null | undefined) => {
     if (!name) return 'U';
@@ -50,7 +88,7 @@ export function Chatbot({ reportContext }: ChatbotProps) {
     setInputValue('');
 
     try {
-      const chatInput: ChatInput = { question, reportContext };
+      const chatInput: ChatInput = { question, reportContext, formData };
 
       const response = await fetch('/api/chat', {
           method: 'POST',
@@ -85,7 +123,7 @@ export function Chatbot({ reportContext }: ChatbotProps) {
             toast({
                 variant: "destructive",
                 title: "AI Service Rate Limited",
-                description: "You've exceeded the daily usage limit for the AI service. Please try again tomorrow.",
+                description: "You've exceeded the daily usage limit for the AI service. Please try again tomorrow. For more information, visit ai.google.dev/gemini-api/docs/rate-limits.",
             });
        } else if (errorMessage.includes("503") || errorMessage.toLowerCase().includes("overloaded")) {
             toast({
@@ -112,7 +150,7 @@ export function Chatbot({ reportContext }: ChatbotProps) {
       <div className="rounded-xl border bg-card p-4 space-y-4 shadow-sm">
         <ScrollArea className="h-72 pr-4">
           <div className="space-y-6">
-            {messages.length === 0 ? (
+            {messages.length === 0 && !isLoading ? (
                 <div className="flex items-start gap-4 p-2">
                     <Avatar className="w-9 h-9 border-2 border-primary">
                         <div className="flex h-full w-full items-center justify-center rounded-full bg-background">
@@ -120,8 +158,8 @@ export function Chatbot({ reportContext }: ChatbotProps) {
                         </div>
                     </Avatar>
                     <div className="flex-1 rounded-lg bg-secondary p-4 text-sm shadow-sm">
-                       <p className="font-medium">Hello! I'm here to help.</p>
-                       <p className="text-muted-foreground mt-1">You can ask me to explain your report, or for general health tips. For example: "Can you explain my BMI?" or "What are some good exercises?"</p>
+                       <p className="font-medium">No report loaded.</p>
+                       <p className="text-muted-foreground mt-1">Please complete a new assessment to activate the chatbot.</p>
                     </div>
                 </div>
             ) : (
@@ -156,7 +194,7 @@ export function Chatbot({ reportContext }: ChatbotProps) {
                     </div>
                 ))
             )}
-             {isLoading && messages.length > 0 && messages[messages.length - 1].type === 'user' && (
+             {isLoading && (
                 <div className="flex items-start gap-4 p-2">
                     <Avatar className="w-9 h-9 border-2 border-primary">
                         <div className="flex h-full w-full items-center justify-center rounded-full bg-background">
@@ -176,7 +214,7 @@ export function Chatbot({ reportContext }: ChatbotProps) {
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             className="pr-12 h-12 rounded-lg"
-            disabled={isLoading}
+            disabled={isLoading || messages.length === 0}
           />
           <Button
             type="submit"

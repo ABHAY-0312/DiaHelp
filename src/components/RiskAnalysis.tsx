@@ -341,6 +341,7 @@ export function RiskAnalysis({ user, result, isLoading }: RiskAnalysisProps) {
           const timer = setTimeout(generatePdf, 1000); // Wait 1 sec for render
           return () => clearTimeout(timer);
       }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isPdfRenderMode]);
 
 
@@ -393,11 +394,14 @@ export function RiskAnalysis({ user, result, isLoading }: RiskAnalysisProps) {
   }
 
   const getResultDate = (result: PredictionRecord): Date => {
+    if (!result.createdAt) {
+        return new Date();
+    }
     if (result.createdAt instanceof Date) {
         return result.createdAt;
     }
     // Firestore Timestamp
-    if (result.createdAt && typeof (result.createdAt as any).seconds === 'number') {
+    if (typeof (result.createdAt as any).seconds === 'number') {
         return (result.createdAt as any).toDate();
     }
     // Fallback to now if something is wrong
@@ -444,7 +448,7 @@ export function RiskAnalysis({ user, result, isLoading }: RiskAnalysisProps) {
                      <HealthTimeline user={user} result={result} timelineData={timelineData} setTimelineData={setTimelineData} isLoading={isTimelineLoading} setIsLoading={setIsTimelineLoading} />
                 </TabsContent>
                 <TabsContent value="chat" className="mt-4">
-                    <Chatbot reportContext={result.report} />
+                    <Chatbot reportContext={result.report} formData={result.formData} />
                 </TabsContent>
             </Tabs>
         </CardContent>
@@ -606,5 +610,3 @@ const LoadingSkeleton = () => (
       </CardFooter>
     </Card>
 )
-
-    

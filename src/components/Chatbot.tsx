@@ -27,55 +27,17 @@ interface Message {
 }
 
 export function Chatbot({ reportContext, formData }: ChatbotProps) {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Message[]>([
+    {
+        id: 'initial-greeting',
+        type: 'bot',
+        text: "Hello! I'm here to help. You can ask me to explain your report, or for general health tips."
+    }
+  ]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
-
-  useEffect(() => {
-    const getInitialAnalysis = async () => {
-        setIsLoading(true);
-        try {
-            const chatInput: ChatInput = { question: 'INITIAL_ANALYSIS', reportContext, formData };
-            const response = await fetch('/api/chat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(chatInput),
-            });
-            if (!response.ok) {
-              throw new Error(await response.text());
-            }
-            const responseData: ChatOutput = await response.json();
-            const botMessage: Message = { id: 'initial-analysis', type: 'bot', text: responseData.answer };
-            setMessages([botMessage]);
-        } catch (error: any) {
-             console.error('Initial analysis error:', error);
-             const errorMessage = error.message || "";
-             if (errorMessage.includes("503") || errorMessage.toLowerCase().includes("overloaded")) {
-                toast({
-                    variant: "default",
-                    title: "AI Assistant Busy",
-                    description: "The initial summary could not be generated right now. The chat is still active.",
-                });
-            }
-             // Fallback to a generic greeting if the initial analysis fails
-             const fallbackMessage: Message = { 
-                id: 'initial-fallback', 
-                type: 'bot', 
-                text: "Hello! I'm here to help. You can ask me to explain your report, or for general health tips." 
-             };
-             setMessages([fallbackMessage]);
-        } finally {
-            setIsLoading(false);
-        }
-    }
-    
-    if (reportContext && formData) {
-      getInitialAnalysis();
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reportContext, formData]);
 
   const getInitials = (name: string | null | undefined) => {
     if (!name) return 'U';
@@ -237,7 +199,7 @@ export function Chatbot({ reportContext, formData }: ChatbotProps) {
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             className="pr-12 h-12 rounded-lg"
-            disabled={isLoading || messages.length === 0}
+            disabled={isLoading || reportContext.length === 0}
           />
           <Button
             type="submit"

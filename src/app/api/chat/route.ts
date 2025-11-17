@@ -37,42 +37,24 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { question, reportContext, formData } = ChatInputSchema.parse(body);
     
-    let prompt: string;
-    
-    if (question === 'INITIAL_ANALYSIS') {
-      prompt = `You are DiaHelper's digital health assistant. A new health report has just been generated for the user.
-Provide a brief, encouraging, and insightful summary of their results as the opening message.
-Start by greeting the user. Mention their risk score and what it means (e.g., "which is in the low/medium/high range").
-Briefly touch on one or two of the key risk factors from their data.
-End by inviting the user to ask any questions they have about their report or health in general.
-
-Report Summary:
----
-${reportContext}
----
-
-User's Health Data:
----
-${JSON.stringify(formData, null, 2)}
----
-`;
-    } else {
-      prompt = `You are DiaHelper's digital health assistant. Your primary role is to answer the user's question accurately and concisely using the provided context.
+    const prompt = `You are DiaHelper's digital health assistant. Your primary role is to answer the user's question accurately and concisely using the provided context.
 Maintain a direct, empowering, and encouraging tone. Avoid clinical jargon.
 
 **Primary Context: Report Summary**
+---
 ${reportContext}
+---
 
 **Secondary Context: User's Raw Health Data**
+---
 ${JSON.stringify(formData, null, 2)}
+---
 
 **User's Question:**
 "${question}"
 
 Based on all the provided information, answer the user's question. If the question is about a specific value (e.g., "what was my BMI?"), find it in the raw health data and provide it.
 `;
-    }
-
 
     const result = await model.generateContent(prompt);
     const responseText = result.response.text();

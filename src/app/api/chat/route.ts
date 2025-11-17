@@ -37,8 +37,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { question, reportContext, formData } = ChatInputSchema.parse(body);
     
-    const prompt = `You are DiaHelper's digital health assistant. Your primary role is to answer the user's question accurately and concisely using the provided context.
-Maintain a direct, empowering, and encouraging tone. Avoid clinical jargon.
+    const prompt = `You are DiaHelper's digital health assistant. Your primary role is to answer the user's question accurately and concisely using the provided context. Maintain a direct, empowering, and encouraging tone. Avoid clinical jargon.
 
 **Primary Context: Report Summary**
 ---
@@ -53,7 +52,16 @@ ${JSON.stringify(formData, null, 2)}
 **User's Question:**
 "${question}"
 
-Based on all the provided information, answer the user's question. If the question is about a specific value (e.g., "what was my BMI?"), find it in the raw health data and provide it.
+**Instructions:**
+1.  Read the user's question carefully.
+2.  If the user asks for an analysis of their report (e.g., "analyze my report", "what's wrong?"), you MUST follow these steps:
+    a.  Identify any health metrics in the "User's Raw Health Data" that are outside of normal ranges. For example, BMI > 25, Fasting Glucose > 100, HbA1c > 5.7%.
+    b.  For each out-of-range metric, clearly state what is wrong (e.g., "Your fasting glucose is elevated.").
+    c.  Provide specific, actionable advice on how to improve THAT specific metric (e.g., "To help manage your glucose, you can try...").
+    d.  Give general prevention tips for long-term health.
+    e.  Always conclude with a disclaimer to consult a healthcare professional.
+3.  If the user asks a general question, answer it based on the provided context.
+4.  If the question is about a specific value (e.g., "what was my BMI?"), find it in the raw health data and provide it.
 `;
 
     const result = await model.generateContent(prompt);

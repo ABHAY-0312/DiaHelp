@@ -3,8 +3,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z, ZodError } from 'zod';
 import {
   GoogleGenerativeAI,
-  HarmCategory,
-  HarmBlockThreshold,
 } from '@google/generative-ai';
 
 const ChatInputSchema = z.object({
@@ -30,22 +28,11 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { question, reportContext } = ChatInputSchema.parse(body);
 
-    const prompt = `You are a friendly and knowledgeable digital health assistant for DiaHelper. Your goal is to be a helpful, informative, and supportive resource for the user. Respond with ONLY a valid JSON object that conforms to the following schema:
-
-\`\`\`json
-{
-  "type": "object",
-  "properties": {
-    "answer": { "type": "string" }
-  },
-  "required": ["answer"]
-}
-\`\`\`
-
-Here are your instructions:
-- **Use the Report as Primary Context:** The user is asking about their personalized report. Base your answers on the information provided in the "Report Context" below.
-- **Provide General Knowledge When Needed:** If the user asks for a definition or explanation of a health term (like "What is BMI?" or "What are carbohydrates?"), you MUST provide a clear and direct answer using your general knowledge. Do not deflect or tell the user you cannot answer.
-- **Be Direct and Empowering:** Answer the user's questions directly. Your tone should be positive, encouraging, and clear. Avoid clinical jargon where possible.
+    const prompt = `You are DiaHelper's digital health assistant. Respond with only a valid JSON object conforming to the ChatOutput schema.
+Instructions:
+- Use the provided Report Context as the primary source to answer the user's question.
+- If the user asks for a general health term definition (e.g., "What is BMI?"), provide a clear, direct answer.
+- Maintain a direct, empowering, and encouraging tone. Avoid clinical jargon.
 
 Report Context:
 ---

@@ -1,10 +1,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { z, ZodError } from 'zod';
+import { z } from 'zod';
 import {
   GoogleGenerativeAI,
-  HarmCategory,
-  HarmBlockThreshold,
 } from '@google/generative-ai';
 
 const GenerateHealthTipOutputSchema = z.object({
@@ -21,25 +19,9 @@ const model = genAI.getGenerativeModel({
 
 export async function GET(req: NextRequest) {
   try {
-    const prompt = `You are a positive and motivating health coach. Respond with ONLY a valid JSON object that conforms to the following schema:
-
-\`\`\`json
-{
-  "type": "object",
-  "properties": {
-    "tip": { "type": "string" }
-  },
-  "required": ["tip"]
-}
-\`\`\`
-
-Here are your instructions:
-Generate a single, interesting, and actionable health tip. The tip should be short (one sentence) and easy to understand. Focus on topics like nutrition, simple exercises, mindfulness, or hydration.
-
-Keep the tone light and encouraging.
-
-Example: "Swapping white bread for whole-wheat is an easy way to boost your fiber intake!"
-`;
+    const prompt = `Generate a single, interesting, actionable, and encouraging health tip (one sentence). Focus on nutrition, simple exercises, mindfulness, or hydration.
+Respond with only a valid JSON object conforming to the GenerateHealthTipOutput schema.
+Example: "Swapping white bread for whole-wheat is an easy way to boost your fiber intake!"`;
 
     const result = await model.generateContent(prompt);
     const responseText = result.response.text();

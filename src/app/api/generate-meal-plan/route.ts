@@ -3,8 +3,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z, ZodError } from 'zod';
 import {
   GoogleGenerativeAI,
-  HarmCategory,
-  HarmBlockThreshold,
 } from '@google/generative-ai';
 
 const GenerateMealPlanInputSchema = z.object({
@@ -51,62 +49,13 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const input = GenerateMealPlanInputSchema.parse(body);
 
-    const prompt = `You are a certified nutritionist specializing in creating meal plans for individuals managing diabetes risk. Respond with ONLY a valid JSON object that conforms to the following schema:
-
-\`\`\`json
-{
-  "type": "object",
-  "properties": {
-    "breakfast": {
-      "type": "object",
-      "properties": {
-        "name": { "type": "string" },
-        "description": { "type": "string" }
-      },
-      "required": ["name", "description"]
-    },
-    "lunch": {
-      "type": "object",
-      "properties": {
-        "name": { "type": "string" },
-        "description": { "type": "string" }
-      },
-      "required": ["name", "description"]
-    },
-    "dinner": {
-      "type": "object",
-      "properties": {
-        "name": { "type": "string" },
-        "description": { "type": "string" }
-      },
-      "required": ["name", "description"]
-    },
-    "snack": {
-      "type": "object",
-      "properties": {
-        "name": { "type": "string" },
-        "description": { "type": "string" }
-      },
-      "required": ["name", "description"]
-    },
-    "summary": { "type": "string" }
-  },
-  "required": ["breakfast", "lunch", "dinner", "snack", "summary"]
-}
-\`\`\`
-
-Here are your instructions:
-Create a simple, balanced, and delicious 1-day meal plan (breakfast, lunch, dinner, and one snack) for a user with the following profile:
-- Diabetes Risk Score: ${input.riskScore}/100
-- Key Health Factors: ${input.keyFactors.join(', ')}
-${input.preferences ? `- Dietary Preferences: ${input.preferences}` : ''}
-
-Your plan should focus on whole foods, be low in processed sugars and refined carbohydrates, and be balanced with lean protein, healthy fats, and fiber.
-
-For each meal, provide a name and a short, encouraging description. Also, provide a brief summary of the meal plan's health goals.
-
-Prioritize meals that are easy to prepare.
-`;
+    const prompt = `Create a simple, balanced, 1-day meal plan (breakfast, lunch, dinner, snack) for a user managing diabetes risk.
+User Profile:
+- Risk Score: ${input.riskScore}/100
+- Key Factors: ${input.keyFactors.join(', ')}
+${input.preferences ? `- Preferences: ${input.preferences}` : ''}
+The plan should focus on whole foods, be low in processed sugars, and easy to prepare.
+Respond with only a valid JSON object conforming to the GenerateMealPlanOutput schema, including a 'summary' of the plan's goals.`;
 
     const result = await model.generateContent(prompt);
     const responseText = result.response.text();

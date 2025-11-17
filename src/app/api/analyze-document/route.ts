@@ -3,8 +3,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z, ZodError } from 'zod';
 import {
   GoogleGenerativeAI,
-  HarmCategory,
-  HarmBlockThreshold,
 } from '@google/generative-ai';
 
 const AnalyzeDocumentInputSchema = z.object({
@@ -61,57 +59,16 @@ export async function POST(req: NextRequest) {
       },
     };
 
-    const prompt = `You are an expert medical data extraction and interpretation AI. Your task is to analyze the provided image of a medical document with high accuracy. Respond with ONLY a valid JSON object that conforms to the following schema:
-
-\`\`\`json
-{
-  "type": "object",
-  "properties": {
-    "documentType": {
-      "type": "string",
-      "enum": ["lab_result", "prescription", "other", "not_a_document"]
-    },
-    "summary": { "type": "string" },
-    "interpretation": { "type": "string" },
-    "extractedFields": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "label": { "type": "string" },
-          "value": { "type": "string" },
-          "referenceRange": { "type": "string" }
-        },
-        "required": ["label", "value"]
-      }
-    },
-    "extractedMedications": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "name": { "type": "string" },
-          "dosage": { "type": "string" },
-          "frequency": { "type": "string" }
-        },
-        "required": ["name", "dosage", "frequency"]
-      }
-    }
-  },
-  "required": ["documentType", "summary", "interpretation", "extractedFields", "extractedMedications"]
-}
-\`\`\`
-
-Here are your instructions:
-1.  **Classify the document**: Determine if it is a lab result, a prescription, or another type of medical document. If it does not appear to be a medical document at all, classify it as 'not_a_document'.
-2.  **Summarize**: Provide a concise, one-sentence summary of the document's purpose (e.g., "This is a lab result for a comprehensive blood panel including lipids and glucose.").
-3.  **Extract Data Fields**: Carefully extract all relevant medical data points from the document.
-    *   For lab results, identify the test name (label), its resulting value (value), and the reference range if available. Be thorough and look for key markers like **Glucose, HbA1c, Total Cholesterol, LDL, HDL, Triglycerides, and Creatinine**, among others.
-    *   For prescriptions, extract the medication name, its dosage, and the frequency of administration.
-4.  **Interpret the Results**: Analyze the extracted fields. If any values are outside their given reference ranges, explain what this could potentially mean in simple, easy-to-understand terms. If ranges aren't provided, use standard medical knowledge. If all values are normal, state that.
-5.  **Add Disclaimer**: Conclude the interpretation with a clear, bolded disclaimer: "**Disclaimer: This is an AI-generated interpretation and is not a substitute for professional medical advice. Please consult with a qualified healthcare provider to discuss your results.**"
-6.  **Populate Output**: Fill the output fields with the extracted data and the full interpretation. Do not invent or hallucinate data. If a specific piece of information is not present, leave the corresponding field empty.
-`;
+    const prompt = `Analyze the provided medical document image with high accuracy. Respond with only a valid JSON object conforming to the AnalyzeDocumentOutput schema.
+Instructions:
+1.  **Classify**: Determine if it's a 'lab_result', 'prescription', 'other', or 'not_a_document'.
+2.  **Summarize**: Provide a one-sentence summary.
+3.  **Extract Data**:
+    *   For lab results, extract 'label', 'value', and 'referenceRange'. Look for key markers like Glucose, HbA1c, Cholesterol, etc.
+    *   For prescriptions, extract 'name', 'dosage', and 'frequency'.
+4.  **Interpret**: Analyze extracted fields. Explain out-of-range values simply. If normal, state that.
+5.  **Disclaimer**: Conclude with: "**Disclaimer: This is an AI-generated interpretation and is not a substitute for professional medical advice. Please consult with a qualified healthcare provider to discuss your results.**"
+6.  **Output**: Populate the JSON fields. Do not invent data.`;
 
     const result = await model.generateContent([prompt, imagePart]);
     const responseText = result.response.text();

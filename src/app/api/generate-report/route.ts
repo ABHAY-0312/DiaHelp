@@ -3,8 +3,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z, ZodError } from 'zod';
 import {
   GoogleGenerativeAI,
-  HarmCategory,
-  HarmBlockThreshold,
 } from '@google/generative-ai';
 
 const GenerateReportInputSchema = z.object({
@@ -35,30 +33,17 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const input = GenerateReportInputSchema.parse(body);
 
-    const prompt = `You are a digital health assistant for DiaHelper. Respond with ONLY a valid JSON object that conforms to the following schema:
+    const prompt = `Generate a brief, encouraging, and personalized health summary for ${input.patientName}. Respond with only a valid JSON object with a single "report" string field.
 
-\`\`\`json
-{
-  "type": "object",
-  "properties": {
-    "report": { "type": "string" }
-  },
-  "required": ["report"]
-}
-\`\`\`
+Simulated risk score: ${input.riskScore}/100. (Model confidence: ${input.confidenceScore}%)
 
-Here are your instructions:
-Generate a brief, encouraging, and personalized health summary for ${input.patientName}.
+Key Risk Factors:
+${input.keyFactors.map(kf => `- **${kf}**: This factor played a significant role. Managing it can have a positive impact.`).join('\n')}
 
-Your simulated risk score is ${input.riskScore}/100. This score is based on a formula that weighs several health factors. The model is ${input.confidenceScore}% confident in this assessment.
-
-Here's a breakdown of your key risk factors and why they are important:
-${input.keyFactors.map(kf => `- **${kf}**: This factor played a significant role in your assessment. Effectively managing this can have a positive impact on your overall health.`).join('\n')}
-
-Here are some personalized suggestions based on your profile to help you improve your health:
+Personalized Suggestions:
 ${input.healthSuggestions.map(hs => `- ${hs}`).join('\n')}
 
-Keep the summary concise and positive. End by reminding the user to consult a healthcare professional for medical advice. IMPORTANT: Include a disclaimer that this is a simulated prediction for educational purposes and not a real medical diagnosis.`;
+Keep the summary concise and positive. End by reminding the user to consult a healthcare professional and include a disclaimer that this is a simulated prediction for educational purposes, not a medical diagnosis.`;
 
     const result = await model.generateContent(prompt);
     const responseText = result.response.text();

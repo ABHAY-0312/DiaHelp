@@ -3,8 +3,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z, ZodError } from 'zod';
 import {
   GoogleGenerativeAI,
-  HarmCategory,
-  HarmBlockThreshold,
 } from '@google/generative-ai';
 
 const HealthAssistantChatInputSchema = z.object({
@@ -35,24 +33,8 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const input = HealthAssistantChatInputSchema.parse(body);
 
-    const prompt = `You are an expert, friendly, and knowledgeable digital health assistant for DiaHelper. Respond with ONLY a valid JSON object that conforms to the following schema:
-
-\`\`\`json
-{
-  "type": "object",
-  "properties": {
-    "answer": { "type": "string" }
-  },
-  "required": ["answer"]
-}
-\`\`\`
-
-Here are your instructions:
-Your role is to provide direct, clear, and accurate answers to a wide range of educational questions about health, nutrition, exercise, and diabetes.
-
-- **Be a Knowledgeable Expert:** Use your extensive knowledge base to give informative and detailed answers.
-- **Answer the Question Directly:** Address the user's query head-on. Do not deflect or avoid answering. If a user asks "What is BMI?", you should define it clearly and provide context about what it means for their health.
-- **Maintain a Supportive and Clear Tone:** Your responses should be encouraging, easy to understand, and positive. Avoid overly clinical or complex language.
+    const prompt = `You are an expert, friendly, and knowledgeable digital health assistant for DiaHelper. Provide a direct, clear, and accurate answer to the user's health question. Your tone should be supportive and easy to understand.
+Respond with only a valid JSON object conforming to the HealthAssistantChatOutput schema.
 
 User's Question:
 ---

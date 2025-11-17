@@ -9,7 +9,6 @@ import { RiskAnalysis } from "@/components/RiskAnalysis";
 import { useToast } from "@/hooks/use-toast";
 import { Logo } from "@/components/icons/Logo";
 import { useAuth } from "@/context/AuthContext";
-import { auth } from "@/lib/firebase/config";
 import { useRouter } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { History, LayoutDashboard, LogOut, UtensilsCrossed, Moon, Sun, Notebook, TrendingUp, Database, Menu, Salad, HeartPulse, FlaskConical, Home, GraduationCap, Hospital, LifeBuoy, BrainCircuit } from "lucide-react";
@@ -544,5 +543,3 @@ export default function Dashboard() {
     </>
   );
 }
-
-    

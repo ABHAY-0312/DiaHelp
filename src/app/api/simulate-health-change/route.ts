@@ -3,8 +3,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z, ZodError } from 'zod';
 import {
   GoogleGenerativeAI,
-  HarmCategory,
-  HarmBlockThreshold,
 } from '@google/generative-ai';
 import { healthFormSchema } from '@/lib/types';
 
@@ -38,43 +36,20 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const input = SimulateHealthChangeInputSchema.parse(body);
 
-    const prompt = `You are a sophisticated health simulation AI named the "Digital Twin Modeler." Your task is to predict the health outcomes of a user after one year based on hypothetical lifestyle changes. Respond with ONLY a valid JSON object that conforms to the following schema:
+    const prompt = `Predict the health outcomes of a user after one year based on hypothetical lifestyle changes.
+Current Health Profile:
+- Age: ${input.currentHealthData.age}, Gender: ${input.currentHealthData.gender}, BMI: ${input.currentHealthData.bmi}, Glucose: ${input.currentHealthData.fastingGlucose}, HbA1c: ${input.currentHealthData.hba1c}, Sleep: ${input.currentHealthData.sleepHours}, Activity: ${input.currentHealthData.physicalActivity}
 
-\`\`\`json
-{
-  "type": "object",
-  "properties": {
-    "projectedRiskScore": { "type": "number" },
-    "narrative": { "type": "string" }
-  },
-  "required": ["projectedRiskScore", "narrative"]
-}
-\`\`\`
-
-Here is the user's current health profile:
-- Age: ${input.currentHealthData.age}
-- Gender: ${input.currentHealthData.gender}
-- BMI: ${input.currentHealthData.bmi}
-- Fasting Glucose: ${input.currentHealthData.fastingGlucose}
-- HbA1c: ${input.currentHealthData.hba1c}
-- Sleep Hours: ${input.currentHealthData.sleepHours}
-- Physical Activity: ${input.currentHealthData.physicalActivity}
-- Current Risk Score: (You will need to infer this from the data)
-
-The user wants to simulate the following changes for one year:
-- New Physical Activity Level: ${input.changes.physicalActivity || 'No change'}
-- Dietary Changes: "${input.changes.dietaryChanges || 'No specific changes'}"
-- New Average Sleep Hours: ${input.changes.sleepHours !== undefined ? input.changes.sleepHours : 'No change'}
+Simulated Changes for One Year:
+- Activity Level: ${input.changes.physicalActivity || 'No change'}
+- Diet: "${input.changes.dietaryChanges || 'No specific changes'}"
+- Sleep: ${input.changes.sleepHours !== undefined ? input.changes.sleepHours : 'No change'}
 
 Instructions:
-1.  **Analyze the Impact:** Based on established medical knowledge, analyze how the proposed changes would realistically affect the user's key metrics (BMI, glucose, HbA1c, etc.) over one year. For example, increased activity and better diet would likely lower BMI and improve glucose control.
-2.  **Project a New Risk Score:** Based on the projected changes to the health metrics, calculate a new estimated diabetes risk score. This score should be a logical evolution from their current state.
-3.  **Write a Narrative:** Create a compelling, paragraph-based narrative for the user.
-    *   Start by acknowledging the positive changes they are considering.
-    *   Explain *how* and *why* their proposed changes would lead to specific health improvements (e.g., "Increasing your activity to a 'moderate' level will help your body use insulin more effectively, which can lead to a lower fasting glucose...").
-    *   Clearly state the projected new risk score.
-    *   Conclude with an encouraging message that reinforces the power of their choices.
-`;
+1.  **Analyze Impact**: Based on medical knowledge, analyze how these changes would affect key metrics (BMI, glucose, etc.) over one year.
+2.  **Project Risk Score**: Calculate a new estimated diabetes risk score based on the projected metrics.
+3.  **Write Narrative**: Create a compelling narrative explaining the projection. Start by acknowledging the positive changes, explain the "how" and "why" of the improvements, state the new risk score, and conclude with an encouraging message.
+Respond with only a valid JSON object conforming to the SimulateHealthChangeOutput schema.`;
 
     const result = await model.generateContent(prompt);
     const responseText = result.response.text();
@@ -90,5 +65,3 @@ Instructions:
     return NextResponse.json({ error: 'Internal Server Error', message: e.message || 'An unexpected error occurred.' }, { status: 500 });
   }
 }
-
-    

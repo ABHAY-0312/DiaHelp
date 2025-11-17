@@ -3,8 +3,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z, ZodError } from 'zod';
 import {
   GoogleGenerativeAI,
-  HarmCategory,
-  HarmBlockThreshold,
 } from '@google/generative-ai';
 
 const GenerateTimelineInputSchema = z.object({
@@ -37,46 +35,15 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const input = GenerateTimelineInputSchema.parse(body);
 
-    const prompt = `You are a predictive health analyst. Based on the user's current diabetes risk score and key risk factors, generate a potential future health timeline. Respond with ONLY a valid JSON object that conforms to the following schema:
-
-\`\`\`json
-{
-  "type": "object",
-  "properties": {
-    "timeline": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "timeframe": { "type": "string" },
-          "prediction": { "type": "string" },
-          "suggestion": { "type": "string" }
-        },
-        "required": ["timeframe", "prediction", "suggestion"]
-      }
-    }
-  },
-  "required": ["timeline"]
-}
-\`\`\`
-
-This timeline should be a projection of what could happen if the user makes NO significant changes to their lifestyle. Create three timeline events: one for 1-2 years, one for 5 years, and one for 10+ years.
-
-For each event, provide a realistic but gentle prediction and a corresponding suggestion for how to change that outcome. The predictions should be directly related to the provided key risk factors. For example, if a key factor is "High BMI," the timeline might predict weight gain and joint issues. If a factor is "Elevated Glucose," it might predict pre-diabetes or energy level fluctuations.
-
-The tone should be cautionary but not alarmist. The goal is to motivate positive change, not to scare the user.
-
+    const prompt = `Generate a potential future health timeline based on the user's data, assuming NO lifestyle changes. Create three events: 1-2 years, 5 years, and 10+ years.
+The predictions should be realistic but gentle, directly related to the key risk factors, and aim to motivate positive change.
 User's Risk Score: ${input.riskScore}
-User's Key Factors:
-${input.keyFactors.map(kf => `- ${kf}`).join('\n')}
-`;
+User's Key Factors: ${input.keyFactors.join(', ')}
+For each event, provide a timeframe, a prediction, and a suggestion. Respond with only a valid JSON object conforming to the GenerateTimelineOutput schema.`;
 
     const result = await model.generateContent(prompt);
     const responseText = result.response.text();
     const responseJson = JSON.parse(responseText.replace(/```json\n?/, "").replace(/```$/, ""));
-
-
-    // Validate the output against our Zod schema to be safe
     const validatedResponse = GenerateTimelineOutputSchema.parse(responseJson);
 
     return NextResponse.json(validatedResponse);

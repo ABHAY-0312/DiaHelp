@@ -3,8 +3,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z, ZodError } from 'zod';
 import {
   GoogleGenerativeAI,
-  HarmCategory,
-  HarmBlockThreshold,
 } from '@google/generative-ai';
 
 const AnalyzeMealInputSchema = z.object({
@@ -63,54 +61,13 @@ export async function POST(req: NextRequest) {
       },
     };
 
-    const prompt = `You are a helpful nutrition assistant for DiaHelper. Analyze the meal in the provided photo. Respond with ONLY a valid JSON object that conforms to the following schema:
-    
-\`\`\`json
-{
-  "type": "object",
-  "properties": {
-    "isFood": { "type": "boolean" },
-    "items": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "name": { "type": "string" },
-          "quantity": { "type": "number" },
-          "calories": { "type": "number" },
-          "carbohydrates": { "type": "number" }
-        },
-        "required": ["name", "quantity", "calories", "carbohydrates"]
-      }
-    },
-    "totalCalories": { "type": "number" },
-    "totalCarbohydrates": { "type": "number" },
-    "feedback": { "type": "string" },
-    "recoveryPlan": {
-      "type": "object",
-      "properties": {
-        "walkReminder": { "type": "string" },
-        "waterPrompt": { "type": "string" },
-        "dinnerSuggestion": { "type": "string" }
-      },
-      "required": ["walkReminder", "waterPrompt", "dinnerSuggestion"]
-    }
-  },
-  "required": ["isFood", "items", "totalCalories", "totalCarbohydrates", "feedback"]
-}
-\`\`\`
-
-Here are your instructions:
-1.  **Identify Food Items**: Identify each food item, and estimate its calories and carbohydrate content PER ITEM. Be specific (e.g., 'Sliced Apple'). If you see multiple identical items, group them and set the 'quantity' field. Calculate totals for the entire meal.
-2.  **Provide Feedback**: Based on the analysis, provide a short, constructive feedback message considering general advice for a balanced diet relevant to diabetes risk management.
-3.  **Check for Cheat Meal**: Determine if the meal qualifies as a "cheat meal" (e.g., pizza, sweets, burgers, very high in processed carbs or sugar).
-4.  **Generate Recovery Plan (if applicable)**: If it is a cheat meal, generate a "Cheat Meal Recovery Plan" with the following three components:
-    *   A brief, encouraging reminder for a 20-minute walk (e.g., "A brisk 20-minute walk can help manage blood sugar levels.").
-    *   A simple prompt to drink water (e.g., "Don't forget to drink a large glass of water (about 300ml) to stay hydrated.").
-    *   A specific, simple, and healthy low-glycemic index (low-GI) dinner suggestion (e.g., "For dinner, consider grilled chicken breast with a side of steamed broccoli and quinoa.").
-    *   Populate the 'recoveryPlan' field with this information. If it's not a cheat meal, do not include the 'recoveryPlan' field.
-
-If the image does not appear to contain food, set the 'isFood' flag to false and do not populate the other fields.`;
+    const prompt = `Analyze the meal in the photo and respond with only a valid JSON object conforming to the AnalyzeMealOutput schema.
+Instructions:
+1.  **Identify Food Items**: Identify each item, its calories, and carbs. Group identical items and set 'quantity'.
+2.  **Provide Feedback**: Give brief, constructive feedback relevant to diabetes risk management.
+3.  **Check for Cheat Meal**: Determine if the meal is a "cheat meal" (high sugar/fat/processed carbs).
+4.  **Generate Recovery Plan**: If it's a cheat meal, create a 'recoveryPlan' with a 'walkReminder', 'waterPrompt', and a healthy 'dinnerSuggestion'. Omit this field otherwise.
+If the image is not food, set 'isFood' to false and leave other fields empty.`;
 
     const result = await model.generateContent([prompt, imagePart]);
     const responseText = result.response.text();

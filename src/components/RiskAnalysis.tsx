@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import type { AnalysisResult } from "@/lib/types";
@@ -29,18 +28,6 @@ interface RiskAnalysisProps {
   result: PredictionRecord | null;
   isLoading: boolean;
   onCalculateRisk: (data: any) => { riskScore: number; shapValues: { name: string; value: number }[] };
-}
-
-const Watermark = ({ text }: { text: string }) => {
-    return (
-        <div className="absolute inset-0 grid-cols-3 grid-rows-4 gap-8 pointer-events-none z-10 overflow-hidden hidden print:grid">
-            {[...Array(12)].map((_, i) => (
-                 <div key={i} className="flex items-center justify-center -rotate-45 transform">
-                    <p className="text-foreground/5 font-bold text-2xl whitespace-nowrap">{text}</p>
-                 </div>
-            ))}
-        </div>
-    )
 }
 
 const RiskScoreGauge = ({ score }: { score: number }) => {
@@ -302,7 +289,6 @@ export function RiskAnalysis({ user, result, isLoading }: RiskAnalysisProps) {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Clear timeline data when the main result changes
     setTimelineData(null);
   }, [result]);
 
@@ -319,7 +305,6 @@ export function RiskAnalysis({ user, result, isLoading }: RiskAnalysisProps) {
     setIsDownloading(true);
     
     let currentTimelineData = timelineData;
-    // Ensure timeline data is loaded before rendering for PDF
     if (!currentTimelineData && result.id) {
         try {
             const existingTimeline = await getHealthTimeline(user.uid, result.id);
@@ -328,7 +313,6 @@ export function RiskAnalysis({ user, result, isLoading }: RiskAnalysisProps) {
                 currentTimelineData = existingTimeline;
             } else {
                  toast({ title: "Timeline Info", description: "Fetching timeline for PDF. This may take a moment."});
-                 // This will now be handled by the on-demand fetch inside HealthTimeline
             }
         } catch (e) {
              toast({ variant: "destructive", title: "Timeline Error", description: "Could not fetch timeline for PDF." });
@@ -337,9 +321,8 @@ export function RiskAnalysis({ user, result, isLoading }: RiskAnalysisProps) {
         }
     }
 
-    setIsPdfRenderMode(true); // Mount the hidden component
+    setIsPdfRenderMode(true); 
 
-    // Brief delay to allow the component and its charts to render
     setTimeout(async () => {
         if (!printRef.current) {
             toast({ variant: "destructive", title: "Download Error", description: "Could not prepare the report for download." });
@@ -375,9 +358,9 @@ export function RiskAnalysis({ user, result, isLoading }: RiskAnalysisProps) {
             });
         } finally {
             setIsDownloading(false);
-            setIsPdfRenderMode(false); // Unmount the hidden component
+            setIsPdfRenderMode(false);
         }
-    }, 2000); // 2-second delay to ensure rendering
+    }, 2000); 
   };
 
 
@@ -450,17 +433,14 @@ export function RiskAnalysis({ user, result, isLoading }: RiskAnalysisProps) {
         </CardFooter>
     </Card>
 
-    {/* Hidden div for PDF generation */}
     {isPdfRenderMode && (
       <div id="pdf-report" ref={printRef} className="absolute left-0 top-0 w-[800px] bg-background text-foreground p-8" style={{ zIndex: -1 }}>
-        {/* 1. Header */}
         <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-primary">Diabetes Risk Assessment Report</h1>
             <p className="text-lg">For: {result.patientName}</p>
             <p className="text-sm text-muted-foreground">Generated on: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
         </div>
 
-        {/* 2. Summary Overview */}
         <div className="mb-8 p-4 border rounded-lg">
             <h2 className="text-2xl font-semibold mb-4">Summary Overview</h2>
             <div className="grid grid-cols-3 gap-4 text-center">
@@ -479,7 +459,6 @@ export function RiskAnalysis({ user, result, isLoading }: RiskAnalysisProps) {
             </div>
         </div>
         
-        {/* 3. Clinical Inputs */}
         <div className="mb-8 page-break-before">
              <h2 className="text-2xl font-semibold mb-4">Clinical Inputs Used</h2>
              <div className="border rounded-lg overflow-hidden">
@@ -504,7 +483,6 @@ export function RiskAnalysis({ user, result, isLoading }: RiskAnalysisProps) {
              </div>
         </div>
 
-        {/* 4. AI Analysis */}
         <div className="mb-8">
             <h2 className="text-2xl font-semibold mb-4">AI Analysis Section</h2>
             <div className="p-4 border rounded-lg mb-6 bg-secondary/30">
@@ -520,13 +498,11 @@ export function RiskAnalysis({ user, result, isLoading }: RiskAnalysisProps) {
             </div>
         </div>
 
-        {/* 5. Health Timeline */}
         <div className="mb-8 page-break-before">
             <h2 className="text-2xl font-semibold mb-4">Health Timeline Projection</h2>
             <HealthTimeline user={user} result={result} isPdfMode={true} timelineData={timelineData} setTimelineData={setTimelineData} isLoading={isTimelineLoading} setIsLoading={setIsTimelineLoading} />
         </div>
 
-        {/* 6. Recommendations */}
          <div className="mb-8">
             <h2 className="text-2xl font-semibold mb-4">Personalized Recommendations</h2>
              <div className="p-4 border rounded-lg bg-secondary/30">
@@ -537,7 +513,6 @@ export function RiskAnalysis({ user, result, isLoading }: RiskAnalysisProps) {
              </div>
         </div>
 
-        {/* 7. Technical Appendix */}
          <div className="mb-8 page-break-before">
             <h2 className="text-2xl font-semibold mb-4">Technical Appendix</h2>
              <div className="p-4 border rounded-lg text-xs space-y-4 bg-secondary/30">
@@ -556,7 +531,6 @@ export function RiskAnalysis({ user, result, isLoading }: RiskAnalysisProps) {
              </div>
         </div>
 
-        {/* 8. Disclaimer */}
         <div className="text-xs text-muted-foreground text-center pt-4 border-t">
             <p><strong>Disclaimer:</strong> This is a simulated prediction for educational and motivational purposes only and is not a real medical diagnosis. The risk score is an estimate based on a statistical model and does not replace a professional medical evaluation. Please consult with a qualified healthcare provider to discuss your results and for any medical advice.</p>
         </div>
@@ -601,8 +575,3 @@ const LoadingSkeleton = () => (
       </CardFooter>
     </Card>
 )
-
-
-
-    
-

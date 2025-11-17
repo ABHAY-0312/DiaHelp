@@ -35,13 +35,9 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { textToCheck } = ModerateTextInputSchema.parse(body);
 
-    const prompt = `You are a content moderation expert. Your task is to determine if the following text contains any abusive, hateful, harassing, or otherwise inappropriate content. Your only output should be a boolean flag.
-
-Text to analyze:
----
-${textToCheck}
----
-`;
+    // This prompt forces the model to evaluate the text against its safety settings.
+    // If the text is inappropriate, the model will throw a safety-related error.
+    const prompt = `Analyze if the following text is appropriate: "${textToCheck}"`;
     await model.generateContent(prompt);
     return NextResponse.json({ isAppropriate: true });
 
@@ -49,6 +45,7 @@ ${textToCheck}
     if (e instanceof ZodError) {
       return NextResponse.json({ error: 'Invalid input', details: e.errors }, { status: 400 });
     }
+    // If the model throws an error related to safety, we catch it and flag the content as inappropriate.
     if (e.message && (e.message.includes('safety') || e.message.includes('blocked'))) {
       return NextResponse.json({ isAppropriate: false });
     }

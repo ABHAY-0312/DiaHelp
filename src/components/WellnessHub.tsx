@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useState } from 'react';
@@ -9,8 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Sparkles, Dumbbell, Bot, AlertTriangle, Send, Activity, BrainCircuit } from 'lucide-react';
+import { Loader2, Sparkles, Dumbbell, Bot, Send, Activity } from 'lucide-react';
 import type { AnalysisResult } from '@/lib/types';
 import { Skeleton } from './ui/skeleton';
 import { ScrollArea } from './ui/scroll-area';
@@ -21,15 +19,12 @@ import type { GenerateExercisePlanOutput, GenerateExercisePlanInput } from '@/ap
 import type { GenerateMetabolicAgeOutput, GenerateMetabolicAgeInput } from '@/app/api/generate-metabolic-age/route';
 import type { HealthAssistantChatOutput, HealthAssistantChatInput } from '@/app/api/health-assistant-chat/route';
 import type { ModerateTextOutput } from '@/app/api/moderate-text/route';
-import { DigitalTwin } from './DigitalTwin';
-
 
 interface WellnessHubProps {
   latestResult: AnalysisResult | null;
 }
 
 export function WellnessHub({ latestResult }: WellnessHubProps) {
-  const [fitnessLevel, setFitnessLevel] = useState<'sedentary' | 'light' | 'moderate' | 'active'>('moderate');
 
   return (
     <div className="space-y-8">
@@ -44,7 +39,7 @@ export function WellnessHub({ latestResult }: WellnessHubProps) {
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
         <div className="space-y-8">
-            <ExercisePlanGenerator latestResult={latestResult} fitnessLevel={latestResult?.formData.physicalActivity || 'moderate'} setFitnessLevel={() => {}} />
+            <ExercisePlanGenerator latestResult={latestResult} />
             <MetabolicAgeCalculator latestResult={latestResult} />
         </div>
         <HealthAssistant />
@@ -55,11 +50,9 @@ export function WellnessHub({ latestResult }: WellnessHubProps) {
 
 interface ExercisePlanGeneratorProps {
     latestResult: AnalysisResult | null;
-    fitnessLevel: 'sedentary' | 'light' | 'moderate' | 'active';
-    setFitnessLevel: (level: 'sedentary' | 'light' | 'moderate' | 'active') => void;
 }
 
-function ExercisePlanGenerator({ latestResult, fitnessLevel }: ExercisePlanGeneratorProps) {
+function ExercisePlanGenerator({ latestResult }: ExercisePlanGeneratorProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [exercisePlan, setExercisePlan] = useState<GenerateExercisePlanOutput | null>(null);
   const { toast } = useToast();
@@ -95,7 +88,6 @@ function ExercisePlanGenerator({ latestResult, fitnessLevel }: ExercisePlanGener
       const plan: GenerateExercisePlanOutput = await response.json();
       setExercisePlan(plan);
     } catch (error: any) {
-      console.error('Exercise plan error:', error);
        const errorMessage = error.message || "";
        if (errorMessage.includes("429")) {
             toast({
@@ -149,7 +141,7 @@ function ExercisePlanGenerator({ latestResult, fitnessLevel }: ExercisePlanGener
       <CardContent className="space-y-4">
         <div>
           <Label htmlFor="fitness-level">Your Fitness Level (from health profile)</Label>
-            <Input id="fitness-level" value={fitnessLevel} disabled className="capitalize" />
+            <Input id="fitness-level" value={latestResult?.formData.physicalActivity || 'N/A'} disabled className="capitalize" />
         </div>
         <Button onClick={handleGeneratePlan} disabled={isLoading || !latestResult} className="w-full">
           {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
@@ -217,7 +209,8 @@ function MetabolicAgeCalculator({ latestResult }: { latestResult: AnalysisResult
             });
 
             if (!response.ok) {
-              throw new Error(await response.text());
+              const errorText = await response.text();
+              throw new Error(errorText);
             }
 
             const result: GenerateMetabolicAgeOutput = await response.json();
@@ -226,11 +219,9 @@ function MetabolicAgeCalculator({ latestResult }: { latestResult: AnalysisResult
             console.error('Metabolic age error:', error);
             let errorMessage = "An unknown error occurred.";
             try {
-                // The error.message is often a JSON string, try to parse it.
                 const errorObj = JSON.parse(error.message);
                 errorMessage = errorObj.message || error.message;
             } catch (e) {
-                // If parsing fails, use the original message.
                 errorMessage = error.message || errorMessage;
             }
 
@@ -490,9 +481,3 @@ const ExercisePlanSkeleton = () => (
         </div>
     </CardContent>
 );
-
-    
-
-    
-
-    

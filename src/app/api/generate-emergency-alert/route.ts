@@ -3,8 +3,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z, ZodError } from 'zod';
 import {
   GoogleGenerativeAI,
-  HarmCategory,
-  HarmBlockThreshold,
 } from '@google/generative-ai';
 
 const GenerateEmergencyAlertInputSchema = z.object({
@@ -37,39 +35,14 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const input = GenerateEmergencyAlertInputSchema.parse(body);
 
-    const prompt = `You are an emergency medical dispatcher creating an automated alert. Respond with ONLY a valid JSON object that conforms to the following schema:
-
-\`\`\`json
-{
-  "type": "object",
-  "properties": {
-    "subject": { "type": "string" },
-    "body": { "type": "string" },
-    "patientName": { "type": "string" },
-    "emergencyContactEmail": { "type": "string" },
-    "criticalReading": { "type": "string" }
-  },
-  "required": ["subject", "body", "patientName", "emergencyContactEmail", "criticalReading"]
-}
-\`\`\`
-
-Here are your instructions:
-A user named ${input.patientName} has recorded a critical health metric on the DiaHelper app.
-
-The specific issue is: ${input.criticalReading}.
-
-Generate an URGENT alert message to be sent to their emergency contact (${input.emergencyContactEmail}).
-
+    const prompt = `Generate an URGENT alert message for ${input.patientName}'s emergency contact (${input.emergencyContactEmail}). Respond with only a valid JSON object conforming to the GenerateEmergencyAlertOutput schema.
+The critical issue is: ${input.criticalReading}.
 The message needs:
 1.  An urgent subject line.
-2.  A clear body explaining the situation:
-    - State who the alert is about (${input.patientName}).
-    - State the critical reading clearly.
-    - STRONGLY advise the recipient to contact ${input.patientName} immediately and/or seek emergency medical services (e.g., call 911 in the US).
-    - Mention that this is an automated alert from the DiaHelper application.
-    - Do NOT include the full health data in the body, just the critical reading.
-
-Also, return the input patientName, emergencyContactEmail, and criticalReading in the output for the UI.
+2.  A clear body explaining the situation, stating the patient's name and critical reading.
+3.  Strongly advise the recipient to contact ${input.patientName} immediately and/or seek emergency medical services.
+4.  Mention that this is an automated alert from the DiaHelper application.
+5.  Return the input patientName, emergencyContactEmail, and criticalReading in the output for the UI.
 `;
 
     const result = await model.generateContent(prompt);

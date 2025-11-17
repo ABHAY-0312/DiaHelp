@@ -3,8 +3,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z, ZodError } from 'zod';
 import {
   GoogleGenerativeAI,
-  HarmCategory,
-  HarmBlockThreshold,
 } from '@google/generative-ai';
 
 const AnalyzeGIInputSchema = z.object({
@@ -31,28 +29,13 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { mealDescription } = AnalyzeGIInputSchema.parse(body);
 
-    const prompt = `You are a nutritional expert specializing in the Glycemic Index (GI). A user has described their meal. Your task is to analyze it and provide an estimated GI, a classification, and a simple explanation. Respond with ONLY a valid JSON object that conforms to the following schema:
-
-\`\`\`json
-{
-  "type": "object",
-  "properties": {
-    "estimatedGI": { "type": "number" },
-    "classification": { "type": "string", "enum": ["Low", "Medium", "High"] },
-    "explanation": { "type": "string" }
-  },
-  "required": ["estimatedGI", "classification", "explanation"]
-}
-\`\`\`
-
-Here are your instructions:
-1.  **Analyze the Meal**: Read the user's meal description: "${mealDescription}".
-2.  **Estimate GI**: Based on the components of the meal, estimate a single Glycemic Index value for the entire meal on a scale of 1-100.
-3.  **Classify**: Classify the GI as 'Low' (1-55), 'Medium' (56-69), or 'High' (70+).
-4.  **Explain**: Write a brief, simple explanation (1-2 sentences) about what this GI level means for blood sugar. For example, a high GI meal might cause a rapid spike, while a low GI meal leads to a slower, more gradual rise.
-
-If the description is not food-related, provide a low GI score and a generic explanation. Be concise and educational.
-`;
+    const prompt = `As a nutritional expert on Glycemic Index (GI), analyze the user's meal and respond with only a valid JSON object conforming to the AnalyzeGIOutput schema.
+Meal Description: "${mealDescription}".
+Instructions:
+1.  **Estimate GI**: Estimate a single GI value for the meal (1-100).
+2.  **Classify**: Classify as 'Low' (1-55), 'Medium' (56-69), or 'High' (70+).
+3.  **Explain**: Provide a 1-2 sentence explanation of what this GI level means for blood sugar.
+If the description is not food-related, provide a low GI and a generic explanation.`;
 
     const result = await model.generateContent(prompt);
     const responseText = result.response.text();

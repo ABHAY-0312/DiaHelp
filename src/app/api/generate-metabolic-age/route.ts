@@ -3,8 +3,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z, ZodError } from 'zod';
 import {
   GoogleGenerativeAI,
-  HarmCategory,
-  HarmBlockThreshold,
 } from '@google/generative-ai';
 
 const GenerateMetabolicAgeInputSchema = z.object({
@@ -48,36 +46,18 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const input = GenerateMetabolicAgeInputSchema.parse(body);
 
-    const prompt = `You are a health and wellness expert. Your task is to estimate a user's metabolic age based on their health data. Respond with ONLY a valid JSON object that conforms to the following schema:
-
-\`\`\`json
-{
-  "type": "object",
-  "properties": {
-    "metabolicAge": { "type": "number" },
-    "explanation": { "type": "string" }
-  },
-  "required": ["metabolicAge", "explanation"]
-}
-\`\`\`
-
-Here are your instructions:
-Metabolic age is a comparison of an individual's Basal Metabolic Rate (BMR) against the average BMR of their chronological age group. A lower metabolic age than chronological age indicates good health.
-
-Analyze the following user data:
+    const prompt = `Estimate a user's metabolic age based on their health data. Metabolic age compares Basal Metabolic Rate (BMR) to the average for their age group. A lower metabolic age is better.
+User Data:
 - Chronological Age: ${input.actualAge}
-- BMI: ${input.bmi} (Healthy range is 18.5-24.9)
-- Glucose: ${input.glucose} mg/dL (Healthy fasting range is 70-100 mg/dL)
-- Average Sleep: ${input.sleepHours} hours (Optimal is 7-9 hours)
+- BMI: ${input.bmi} (Healthy: 18.5-24.9)
+- Glucose: ${input.glucose} mg/dL (Healthy: 70-100)
+- Sleep: ${input.sleepHours} hours (Optimal: 7-9)
 - Fitness Level: ${input.fitnessLevel}
 
-Based on these factors, calculate a metabolic age.
-- A high BMI and high glucose will significantly increase metabolic age.
-- Good sleep (7-9 hours) and a higher fitness level will decrease metabolic age.
-- Start with the actual age and adjust it up or down based on how the user's metrics compare to healthy norms. For example, a BMI of 30 might add 5-7 years, while an 'active' fitness level might subtract 3-5 years.
-
-After calculating the metabolic age, provide a brief, encouraging explanation for the result. Frame it positively, focusing on what the user can do to improve or maintain their health. For example, if the metabolic age is high, say something like "Your metabolic age is estimated to be X. It's a bit higher than your actual age, mainly due to BMI, but improving this with regular exercise can make a big difference!". If it's low, congratulate them.
-`;
+Instructions:
+1. Calculate a metabolic age. High BMI/glucose increases it; good sleep/fitness decreases it. Start with actual age and adjust realistically (e.g., BMI of 30 might add 5-7 years, 'active' fitness might subtract 3-5).
+2. Provide a brief, encouraging explanation for the result, focusing on positive actions.
+Respond with only a valid JSON object conforming to the GenerateMetabolicAgeOutput schema.`;
 
     const result = await model.generateContent(prompt);
     const responseText = result.response.text();

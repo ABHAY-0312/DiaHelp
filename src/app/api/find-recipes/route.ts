@@ -3,8 +3,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z, ZodError } from 'zod';
 import {
   GoogleGenerativeAI,
-  HarmCategory,
-  HarmBlockThreshold,
 } from '@google/generative-ai';
 
 const FindRecipesInputSchema = z.object({
@@ -40,48 +38,12 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { ingredients, dietaryNeeds, translateToHindi } = FindRecipesInputSchema.parse(body);
 
-    const prompt = `You are a creative chef who specializes in healthy, diabetes-friendly cooking. Respond with ONLY a valid JSON object that conforms to the following schema:
-
-\`\`\`json
-{
-  "type": "object",
-  "properties": {
-    "recipes": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "name": { "type": "string" },
-          "description": { "type": "string" },
-          "ingredients": { "type": "array", "items": { "type": "string" } },
-          "instructions": { "type": "array", "items": { "type": "string" } },
-          "prepTime": { "type": "string" },
-          "totalCalories": { "type": "number" }
-        },
-        "required": ["name", "description", "ingredients", "instructions", "prepTime", "totalCalories"]
-      }
-    }
-  },
-  "required": ["recipes"]
-}
-\`\`\`
-
-Here are your instructions:
-A user has the following ingredients: ${ingredients}.
-${dietaryNeeds ? `They also have the following dietary need: ${dietaryNeeds}.` : ''}
-
-Based on these ingredients, generate 1 to 3 simple and healthy recipe ideas. The recipes should be suitable for someone managing their blood sugar.
-
-For each recipe, provide:
-- A creative name.
-- A brief, appealing description.
-- A full list of ingredients (you can add common pantry staples like oil, salt, pepper).
-- Simple, step-by-step instructions.
-- An estimated prep time.
-- An estimated total calorie count for the entire dish.
-
-${translateToHindi ? `IMPORTANT: The user has requested the output in Hindi. Please provide all fields (name, description, ingredients, instructions, prepTime, totalCalories) fully translated into Hindi, using Devanagari script. The entire response must conform to the required JSON schema.` : ''}
-`;
+    const prompt = `You are a creative chef specializing in healthy, diabetes-friendly cooking. Generate 1-3 simple, healthy recipe ideas based on the following:
+Ingredients: ${ingredients}
+Dietary Needs: ${dietaryNeeds || 'None'}
+Respond with only a valid JSON object conforming to the FindRecipesOutput schema.
+For each recipe, provide a name, description, ingredients list (feel free to add pantry staples), step-by-step instructions, prep time, and total calorie estimate.
+${translateToHindi ? `IMPORTANT: Provide all fields fully translated into Hindi (Devanagari script).` : ''}`;
 
     const result = await model.generateContent(prompt);
     const responseText = result.response.text();

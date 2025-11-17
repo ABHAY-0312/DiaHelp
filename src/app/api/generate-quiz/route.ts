@@ -3,8 +3,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z, ZodError } from 'zod';
 import {
   GoogleGenerativeAI,
-  HarmCategory,
-  HarmBlockThreshold,
 } from '@google/generative-ai';
 
 const GenerateQuizInputSchema = z.object({
@@ -38,45 +36,11 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const input = GenerateQuizInputSchema.parse(body);
 
-    const prompt = `You are a health educator AI. Your task is to create a simple and engaging educational module about the topic of ${input.topic}. Respond with ONLY a valid JSON object that conforms to the following schema:
-
-\`\`\`json
-{
-  "type": "object",
-  "properties": {
-    "topic": { "type": "string" },
-    "microLesson": { "type": "string" },
-    "questions": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "question": { "type": "string" },
-          "options": { "type": "array", "items": { "type": "string" } },
-          "correctAnswer": { "type": "string" },
-          "explanation": { "type": "string" }
-        },
-        "required": ["question", "options", "correctAnswer", "explanation"]
-      }
-    }
-  },
-  "required": ["topic", "microLesson", "questions"]
-}
-\`\`\`
-
-Here are your instructions:
-The module must contain two parts:
-1.  **Micro-Lesson**: A short, single paragraph (3-4 sentences) that explains the core concepts of the topic in simple, clear language.
-2.  **Quiz**: A set of 3 multiple-choice questions to test the user's understanding.
-
-For each question, you must provide:
-- The question itself.
-- An array of exactly 4 answer options. One must be correct.
-- The correct answer.
-- A one-sentence explanation for why the answer is correct.
-
-The goal is to be educational and encouraging, not overly clinical or difficult.
-`;
+    const prompt = `Create a simple educational module about "${input.topic}". Respond with only a valid JSON object conforming to the GenerateQuizOutput schema.
+The module must contain:
+1.  **Micro-Lesson**: A short, simple paragraph (3-4 sentences) explaining the topic.
+2.  **Quiz**: 3 multiple-choice questions. For each question, provide the question text, an array of 4 options, the correct answer, and a one-sentence explanation.
+The goal is to be educational and encouraging.`;
 
     const result = await model.generateContent(prompt);
     const responseText = result.response.text();

@@ -3,8 +3,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z, ZodError } from 'zod';
 import {
   GoogleGenerativeAI,
-  HarmCategory,
-  HarmBlockThreshold,
 } from '@google/generative-ai';
 
 const GenerateExercisePlanInputSchema = z.object({
@@ -59,47 +57,13 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const input = GenerateExercisePlanInputSchema.parse(body);
 
-    const prompt = `You are an expert fitness coach specializing in creating accessible exercise plans for individuals managing diabetes risk. Respond with ONLY a valid JSON object that conforms to the following schema:
-
-\`\`\`json
-{
-  "type": "object",
-  "properties": {
-    "weeklySummary": { "type": "string" },
-    "dailyPlans": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "day": { "type": "string" },
-          "focus": { "type": "string" },
-          "activity": { "type": "string" },
-          "duration": { "type": "string" }
-        },
-        "required": ["day", "focus", "activity", "duration"]
-      }
-    }
-  },
-  "required": ["weeklySummary", "dailyPlans"]
-}
-\`\`\`
-
-Here are your instructions:
-Create a 7-day exercise plan for a user with the following profile:
-- Age: ${input.age}
-- BMI: ${input.bmi}
-- Fitness Level: ${input.fitnessLevel}
-
-The plan should be balanced, including a mix of cardiovascular exercise, strength training, and flexibility or rest days.
-- For 'sedentary' or 'light', focus on low-impact activities like walking, stretching, and bodyweight exercises.
-- For 'moderate', introduce moderate-intensity activities like jogging, light weightlifting.
-- For 'active', suggest higher-intensity workouts.
-
-Create a plan for 5 active days and 2 rest/active recovery days.
-
-For each day, provide the day of the week, a focus, a specific activity, and a recommended duration.
-Also provide an overall weekly summary that is positive and motivating.
-`;
+    const prompt = `Create a 7-day balanced exercise plan for a user with Age: ${input.age}, BMI: ${input.bmi}, Fitness Level: ${input.fitnessLevel}.
+The plan should be suitable for managing diabetes risk, including cardio, strength, and rest days.
+- 'sedentary'/'light': Low-impact activities (walking, stretching).
+- 'moderate': Moderate-intensity (jogging, light weights).
+- 'active': Higher-intensity workouts.
+Create a plan for 5 active days and 2 rest/recovery days.
+Respond with only a valid JSON object conforming to the GenerateExercisePlanOutput schema, including a 'weeklySummary' and 'dailyPlans'.`;
 
     const result = await model.generateContent(prompt);
     const responseText = result.response.text();

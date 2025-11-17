@@ -1,7 +1,7 @@
 
 "use client";
 
-import type { AnalysisResult } from "@/lib/types";
+import type { PredictionRecord } from "@/lib/types";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend, Cell, CartesianGrid } from "recharts";
@@ -20,7 +20,7 @@ import html2canvas from "html2canvas";
 import type { User } from "firebase/auth";
 import type { GenerateTimelineOutput, GenerateTimelineInput } from "@/app/api/generate-timeline/route";
 import { saveHealthTimeline, getHealthTimeline } from "@/lib/firebase/firestore";
-import type { HealthTimelineRecord, PredictionRecord } from "@/lib/types";
+import type { HealthTimelineRecord } from "@/lib/types";
 
 
 interface RiskAnalysisProps {
@@ -392,12 +392,26 @@ export function RiskAnalysis({ user, result, isLoading }: RiskAnalysisProps) {
     );
   }
 
+  const getResultDate = (result: PredictionRecord): Date => {
+    if (result.createdAt instanceof Date) {
+        return result.createdAt;
+    }
+    // Firestore Timestamp
+    if (result.createdAt && typeof result.createdAt.seconds === 'number') {
+        return result.createdAt.toDate();
+    }
+    // Fallback to now if something is wrong
+    return new Date();
+  }
+
+  const resultDate = getResultDate(result);
+
   return (
     <>
     <Card className="w-full h-full overflow-hidden shadow-lg border-primary/20">
         <CardHeader className="pb-4">
             <CardTitle className="text-2xl">Risk Assessment for {result.patientName}</CardTitle>
-            <CardDescription>Generated on {new Date(result.createdAt.seconds * 1000).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</CardDescription>
+            <CardDescription>Generated on {resultDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-8">
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-center">
@@ -451,7 +465,7 @@ export function RiskAnalysis({ user, result, isLoading }: RiskAnalysisProps) {
             <div className="text-center mb-8">
                 <h1 className="text-3xl font-bold text-primary">Diabetes Risk Assessment Report</h1>
                 <p className="text-lg">For: {result.patientName}</p>
-                <p className="text-sm text-muted-foreground">Generated on: {new Date(result.createdAt.seconds * 1000).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                <p className="text-sm text-muted-foreground">Generated on: {resultDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
             </div>
 
             {/* 2. Summary Overview */}
@@ -596,3 +610,5 @@ const LoadingSkeleton = () => (
       </CardFooter>
     </Card>
 )
+
+    

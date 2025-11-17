@@ -90,7 +90,7 @@ const calculateRisk = (data: Partial<HealthFormData>): { riskScore: number; shap
 
 export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(false);
-  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
+  const [analysisResult, setAnalysisResult] = useState<PredictionRecord | null>(null);
   const [predictionHistory, setPredictionHistory] = useState<PredictionRecord[]>([]);
   const [healthLogs, setHealthLogs] = useState<HealthLogRecord[]>([]);
   const [healthTip, setHealthTip] = useState<HealthTip | null>(null);
@@ -205,7 +205,9 @@ export default function Dashboard() {
       
       const aiResult: GenerateReportOutput = await aiResponse.json();
 
-      const result: AnalysisResult = {
+      const result: PredictionRecord = {
+        id: `temp-${Date.now()}`,
+        userId: user.uid,
         patientName: user?.displayName || 'Patient',
         riskScore: Math.round(riskScore),
         confidenceScore: confidenceScore,
@@ -214,6 +216,7 @@ export default function Dashboard() {
         report: aiResult.report,
         healthSuggestions: healthSuggestions,
         formData: data,
+        createdAt: new Date() as any, // Temporary client-side date
       };
 
       setAnalysisResult(result);
@@ -543,3 +546,5 @@ export default function Dashboard() {
     </>
   );
 }
+
+    

@@ -192,14 +192,15 @@ export async function saveHealthTimeline(userId: string, predictionId: string, t
 }
 
 export async function getHealthTimeline(userId: string, predictionId: string): Promise<HealthTimelineRecord | null> {
-  try {
-    const q = query(
-      collection(db, "timelines"),
-      where("userId", "==", userId),
-      where("predictionId", "==", predictionId),
-      limit(1)
-    );
+  const collectionRef = collection(db, "timelines");
+  const q = query(
+    collectionRef,
+    where("userId", "==", userId),
+    where("predictionId", "==", predictionId),
+    limit(1)
+  );
 
+  try {
     const querySnapshot = await getDocs(q);
     if (querySnapshot.empty) {
       return null;
@@ -207,8 +208,12 @@ export async function getHealthTimeline(userId: string, predictionId: string): P
     
     const doc = querySnapshot.docs[0];
     return { id: doc.id, ...doc.data() } as HealthTimelineRecord;
-  } catch (e) {
-    console.error("Error getting health timeline: ", e);
+  } catch (serverError: any) {
+    const permissionError = new FirestorePermissionError({
+      path: collectionRef.path,
+      operation: 'list', // 'list' is appropriate for queries
+    });
+    errorEmitter.emit('permission-error', permissionError);
     throw new Error("Could not retrieve health timeline.");
   }
 }

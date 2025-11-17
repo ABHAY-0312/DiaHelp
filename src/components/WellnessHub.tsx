@@ -18,7 +18,6 @@ import { useAuth } from '@/context/AuthContext';
 import type { GenerateExercisePlanOutput, GenerateExercisePlanInput } from '@/app/api/generate-exercise-plan/route';
 import type { GenerateMetabolicAgeOutput, GenerateMetabolicAgeInput } from '@/app/api/generate-metabolic-age/route';
 import type { HealthAssistantChatOutput, HealthAssistantChatInput } from '@/app/api/health-assistant-chat/route';
-import type { ModerateTextOutput } from '@/app/api/moderate-text/route';
 
 interface WellnessHubProps {
   latestResult: AnalysisResult | null;
@@ -316,30 +315,11 @@ function HealthAssistant() {
     if (!question || isLoading) return;
 
     setIsLoading(true);
-
-    try {
-      const moderationResponse = await fetch('/api/moderate-text', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ textToCheck: question }),
-      });
-      const moderationResult: ModerateTextOutput = await moderationResponse.json();
-
-      if (!moderationResult.isAppropriate) {
-        toast({
-          variant: "destructive",
-          title: "Inappropriate Content Detected",
-          description: "Please keep your language respectful and focused on health topics.",
-        });
-        setInputValue('');
-        setIsLoading(false);
-        return;
-      }
-
-      const userMessage: Message = { id: Date.now().toString(), type: 'user', text: question };
-      setMessages((prev) => [...prev, userMessage]);
-      setInputValue('');
+    const userMessage: Message = { id: Date.now().toString(), type: 'user', text: question };
+    setMessages((prev) => [...prev, userMessage]);
+    setInputValue('');
       
+    try {
       const chatInput: HealthAssistantChatInput = { question };
       const response = await fetch('/api/health-assistant-chat', {
           method: 'POST',
@@ -376,7 +356,7 @@ function HealthAssistant() {
                 description: 'Sorry, I had trouble getting a response. Please try again.',
             });
         }
-      setMessages((prev) => prev.filter((m) => m.text !== question));
+      setMessages((prev) => prev.filter((m) => m.id !== userMessage.id));
     } finally {
       setIsLoading(false);
     }
@@ -475,3 +455,5 @@ const ExercisePlanSkeleton = () => (
         </div>
     </CardContent>
 );
+
+    

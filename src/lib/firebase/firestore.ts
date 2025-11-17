@@ -1,7 +1,7 @@
 
 "use client";
 import { db } from "@/lib/firebase/config";
-import type { AnalysisResult, HealthFormData, HealthLog, PredictionRecord, HealthLogRecord, QuizAttemptData, ContactQueryData } from "@/lib/types";
+import type { AnalysisResult, HealthFormData, HealthLog, PredictionRecord, HealthLogRecord, QuizAttemptData, ContactQueryData, HealthTimelineData, HealthTimelineRecord } from "@/lib/types";
 import {
   collection,
   addDoc,
@@ -9,6 +9,7 @@ import {
   where,
   getDocs,
   Timestamp,
+  limit,
 } from "firebase/firestore";
 
 export async function savePrediction(
@@ -134,5 +135,42 @@ export async function saveContactQuery(userId: string, queryData: ContactQueryDa
   } catch (e) {
     console.error("Error saving contact query: ", e);
     throw new Error("Could not save contact query.");
+  }
+}
+
+export async function saveHealthTimeline(userId: string, predictionId: string, timelineData: HealthTimelineData): Promise<string> {
+  try {
+    const docRef = await addDoc(collection(db, "timelines"), {
+      userId,
+      predictionId,
+      ...timelineData,
+      createdAt: Timestamp.now(),
+    });
+    return docRef.id;
+  } catch (e) {
+    console.error("Error saving health timeline: ", e);
+    throw new Error("Could not save health timeline.");
+  }
+}
+
+export async function getHealthTimeline(userId: string, predictionId: string): Promise<HealthTimelineRecord | null> {
+  try {
+    const q = query(
+      collection(db, "timelines"),
+      where("userId", "==", userId),
+      where("predictionId", "==", predictionId),
+      limit(1)
+    );
+
+    const querySnapshot = await getDocs(q);
+    if (querySnapshot.empty) {
+      return null;
+    }
+    
+    const doc = querySnapshot.docs[0];
+    return { id: doc.id, ...doc.data() } as HealthTimelineRecord;
+  } catch (e) {
+    console.error("Error getting health timeline: ", e);
+    throw new Error("Could not retrieve health timeline.");
   }
 }

@@ -1,4 +1,3 @@
-
 import { z } from 'zod';
 import type { Timestamp } from 'firebase/firestore';
 
@@ -137,3 +136,21 @@ export const giAnalysisSchema = z.object({
 });
 
 export type GIAnalysis = z.infer<typeof giAnalysisSchema>;
+
+export const timelineEventSchema = z.object({
+    timeframe: z.string(),
+    prediction: z.string(),
+    suggestion: z.string(),
+});
+
+export const healthTimelineSchema = z.object({
+  timeline: z.array(timelineEventSchema),
+});
+export type HealthTimelineData = z.infer<typeof healthTimelineSchema>;
+
+export interface HealthTimelineRecord extends HealthTimelineData {
+    id: string;
+    userId: string;
+    predictionId: string;
+    createdAt: Timestamp;
+}

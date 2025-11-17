@@ -36,5 +36,10 @@ service cloud.firestore {
     match /contactQueries/{queryId} {
         allow create: if isSignedIn() && request.auth.uid == request.resource.data.userId;
     }
+
+    // Timelines: Users can read and create timelines associated with their predictions.
+    match /timelines/{timelineId} {
+      allow read, create: if isSignedIn() && request.auth.uid == request.resource.data.userId;
+    }
   }
 }

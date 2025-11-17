@@ -34,18 +34,15 @@ export async function POST(req: NextRequest) {
     const input = HealthAssistantChatInputSchema.parse(body);
 
     const prompt = `You are an expert, friendly, and knowledgeable digital health assistant for DiaHelper. Provide a direct, clear, and accurate answer to the user's health question. Your tone should be supportive and easy to understand.
-Respond with only a valid JSON object conforming to the HealthAssistantChatOutputSchema.
-
-User's Question:
----
-${input.question}
----
-`;
+The user's question is: "${input.question}"`;
 
     const result = await model.generateContent(prompt);
     const responseText = result.response.text();
-    const responseJson = JSON.parse(responseText.replace(/```json\n?/, "").replace(/```$/, ""));
-    const validatedResponse = HealthAssistantChatOutputSchema.parse(responseJson);
+    
+    // Directly use the text response from the AI
+    const validatedResponse: HealthAssistantChatOutput = {
+      answer: responseText,
+    };
 
     return NextResponse.json(validatedResponse);
   } catch (e: any) {

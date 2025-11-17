@@ -10,6 +10,22 @@ By leveraging a **predictive machine learning model** and **generative AI**, Dia
 
 ---
 
+## 🚀 What's New in DiaHelper v3.0
+
+### 🤖 1. Digital Twin Simulator
+Forecast the future of your health. Simulate lifestyle changes—like a new diet or exercise routine—and get an AI-powered prediction of its impact on your risk score and key health metrics over the next year.
+
+### 🧠 2. Health Literacy Hub
+Boost your health knowledge with interactive, AI-generated quizzes on topics like blood sugar, nutrition, and insulin. Track your "Health IQ" and master the concepts crucial for a healthier life.
+
+### 💪 3. Wellness Hub
+Go beyond nutrition with a dedicated hub for fitness and overall well-being. Generate personalized weekly exercise plans tailored to your fitness level and calculate your "Metabolic Age" to understand your body's health from a new perspective.
+
+### 🏥 4. Care Finder
+Instantly locate nearby hospitals and medical centers using our AI-powered search tool. Get names, addresses, and phone numbers for care facilities in your area, right when you need them.
+
+---
+
 ## 🚀 Key Features  
 
 ### 🧠 AI-Powered Risk Assessment  
@@ -92,6 +108,7 @@ It predicts the likelihood of diabetes based on parameters like:
 |----------|----------|
 | **v1.0** | Initial release with Risk Assessment, Chatbot, Meal Analyzer, Dataset Analyzer, and Health Log. |
 | **v2.0** | Added **Prescription Reader**, **Glycemic Index Integration**, **Improved Logout System**, and **API Fixes**. |
+| **v3.0** | Added **Digital Twin**, **Health Literacy Hub**, **Wellness Hub**, and **Care Finder**. |
 
 ---
 

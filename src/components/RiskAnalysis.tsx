@@ -10,11 +10,11 @@ import { Download, FileText, Bot, MessageSquare, Activity, ArrowDown, ArrowUp, C
 import { Chatbot } from "./Chatbot";
 import { Checkbox } from "./ui/checkbox";
 import { Label } from "./ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import type { User } from "firebase/auth";
@@ -153,8 +153,7 @@ const ShapAnalysisChart = ({ shapValues }: { shapValues: { name: string; value: 
   );
 };
 
-const HealthTimeline = ({ result, isPdfMode }: { result: AnalysisResult, isPdfMode?: boolean }) => {
-    const [timelineData, setTimelineData] = useState<GenerateTimelineOutput | null>(null);
+const HealthTimeline = ({ result, isPdfMode, timelineData, setTimelineData }: { result: AnalysisResult, isPdfMode?: boolean, timelineData: GenerateTimelineOutput | null, setTimelineData: (data: GenerateTimelineOutput | null) => void }) => {
     const [isTimelineLoading, setIsTimelineLoading] = useState(false);
     const { toast } = useToast();
     const hasFetched = useRef(false);
@@ -202,7 +201,7 @@ const HealthTimeline = ({ result, isPdfMode }: { result: AnalysisResult, isPdfMo
         } finally {
             setIsTimelineLoading(false);
         }
-    }, [result, toast]);
+    }, [result, toast, setTimelineData]);
 
     useEffect(() => {
         if (isPdfMode && !timelineData && !hasFetched.current) {
@@ -282,6 +281,12 @@ export function RiskAnalysis({ user, result, isLoading }: RiskAnalysisProps) {
   const [isDownloading, setIsDownloading] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+  const [timelineData, setTimelineData] = useState<GenerateTimelineOutput | null>(null);
+
+  useEffect(() => {
+    // Reset timeline data when a new analysis result is loaded
+    setTimelineData(null);
+  }, [result]);
 
   const handleDownloadPdf = async () => {
     const reportElement = printRef.current;
@@ -386,7 +391,7 @@ export function RiskAnalysis({ user, result, isLoading }: RiskAnalysisProps) {
                          <HealthSuggestions suggestions={result.healthSuggestions} />
                     </TabsContent>
                     <TabsContent value="timeline" className="mt-4">
-                         <HealthTimeline result={result} />
+                         <HealthTimeline result={result} timelineData={timelineData} setTimelineData={setTimelineData} />
                     </TabsContent>
                     <TabsContent value="chat" className="mt-4">
                         <Chatbot reportContext={result.report} />
@@ -474,7 +479,7 @@ export function RiskAnalysis({ user, result, isLoading }: RiskAnalysisProps) {
         {/* 5. Health Timeline */}
         <div className="mb-8 page-break-before">
             <h2 className="text-2xl font-semibold mb-4">Health Timeline Projection</h2>
-            <HealthTimeline result={result} isPdfMode={true} />
+            <HealthTimeline result={result} isPdfMode={true} timelineData={timelineData} setTimelineData={setTimelineData} />
         </div>
 
         {/* 6. Recommendations */}
@@ -551,3 +556,5 @@ const LoadingSkeleton = () => (
       </CardFooter>
     </Card>
 )
+
+    

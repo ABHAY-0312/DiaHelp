@@ -12,7 +12,6 @@ import { useAuth } from '@/context/AuthContext';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { cn } from '@/lib/utils';
 import type { ChatInput, ChatOutput } from '@/app/api/chat/route';
-import type { ModerateTextOutput } from '@/app/api/moderate-text/route';
 
 interface ChatbotProps {
   reportContext: string;
@@ -46,30 +45,11 @@ export function Chatbot({ reportContext }: ChatbotProps) {
     if (!question || isLoading) return;
 
     setIsLoading(true);
+    const userMessage: Message = { id: Date.now().toString(), type: 'user', text: question };
+    setMessages((prev) => [...prev, userMessage]);
+    setInputValue('');
 
     try {
-      const moderationResponse = await fetch('/api/moderate-text', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ textToCheck: question }),
-      });
-      const moderationResult: ModerateTextOutput = await moderationResponse.json();
-
-      if (!moderationResult.isAppropriate) {
-        toast({
-          variant: "destructive",
-          title: "Inappropriate Content Detected",
-          description: "Please keep your language respectful and focused on health topics.",
-        });
-        setInputValue('');
-        setIsLoading(false);
-        return;
-      }
-
-      const userMessage: Message = { id: Date.now().toString(), type: 'user', text: question };
-      setMessages((prev) => [...prev, userMessage]);
-      setInputValue('');
-
       const chatInput: ChatInput = { question, reportContext };
 
       const response = await fetch('/api/chat', {
@@ -79,7 +59,19 @@ export function Chatbot({ reportContext }: ChatbotProps) {
       });
 
       if (!response.ok) {
-        throw new Error(await response.text());
+        const errorBody = await response.json();
+        // Handle specific safety error from the consolidated API
+        if (errorBody.error === 'Inappropriate content detected') {
+          toast({
+            variant: "destructive",
+            title: "Inappropriate Content",
+            description: "Your message was blocked for safety reasons. Please rephrase it.",
+          });
+          setMessages((prev) => prev.filter((m) => m.id !== userMessage.id)); // Remove user message
+          setIsLoading(false);
+          return;
+        }
+        throw new Error(errorBody.message || 'An unknown error occurred');
       }
       
       const responseData: ChatOutput = await response.json();
@@ -108,7 +100,7 @@ export function Chatbot({ reportContext }: ChatbotProps) {
                 description: 'Sorry, I had trouble getting a response. Please try again.',
             });
        }
-      setMessages((prev) => prev.filter((m) => m.text !== question));
+      setMessages((prev) => prev.filter((m) => m.id !== userMessage.id));
     } finally {
       setIsLoading(false);
     }

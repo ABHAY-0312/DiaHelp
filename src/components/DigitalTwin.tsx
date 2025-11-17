@@ -9,9 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Sparkles, BrainCircuit, AlertCircle, Bot } from 'lucide-react';
+import { Loader2, Sparkles, BrainCircuit, Bot } from 'lucide-react';
 import type { AnalysisResult, HealthFormData } from '@/lib/types';
-import { Skeleton } from './ui/skeleton';
 import type { SimulateHealthChangeInput, SimulateHealthChangeOutput } from '@/app/api/simulate-health-change/route';
 
 interface DigitalTwinProps {

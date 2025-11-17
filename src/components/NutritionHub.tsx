@@ -343,3 +343,4 @@ const RecipeSkeleton = () => (
         <Skeleton className="h-12 w-full" />
     </CardContent>
 )
+

@@ -83,3 +83,4 @@ If the image is not food, set 'isFood' to false and leave other fields empty.`;
     return NextResponse.json({ error: 'Internal Server Error', message: e.message || 'An unexpected error occurred.' }, { status: 500 });
   }
 }
+

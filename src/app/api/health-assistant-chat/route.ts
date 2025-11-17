@@ -53,3 +53,4 @@ The user's question is: "${input.question}"`;
     return NextResponse.json({ error: 'Internal ServerError', message: e.message || 'An unexpected error occurred.' }, { status: 500 });
   }
 }
+

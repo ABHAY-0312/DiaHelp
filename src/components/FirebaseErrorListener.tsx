@@ -26,3 +26,4 @@ export function FirebaseErrorListener() {
 
   return null; // This component does not render any UI
 }
+

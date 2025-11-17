@@ -161,3 +161,4 @@ const ResultsSkeleton = () => (
         </CardContent>
     </Card>
 )
+

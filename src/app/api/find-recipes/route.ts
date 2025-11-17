@@ -59,3 +59,4 @@ ${translateToHindi ? `IMPORTANT: Provide all fields fully translated into Hindi 
     return NextResponse.json({ error: 'Internal Server Error', message: e.message || 'An unexpected error occurred.' }, { status: 500 });
   }
 }
+

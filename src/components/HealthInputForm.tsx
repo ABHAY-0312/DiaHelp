@@ -247,3 +247,4 @@ export function HealthInputForm({ onSubmit, isLoading }: HealthInputFormProps) {
     </Card>
   );
 }
+

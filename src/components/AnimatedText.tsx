@@ -59,3 +59,4 @@ export function AnimatedText({ text, el: Wrapper = 'p', className, once }: Anima
         </Wrapper>
     )
 }
+

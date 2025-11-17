@@ -34,3 +34,4 @@ Example: "Swapping white bread for whole-wheat is an easy way to boost your fibe
     return NextResponse.json({ error: 'Internal Server Error', message: e.message || 'An unexpected error occurred.' }, { status: 500 });
   }
 }
+

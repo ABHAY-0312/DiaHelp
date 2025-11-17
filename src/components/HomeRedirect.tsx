@@ -17,3 +17,4 @@ export function HomeRedirect() {
     
     return null;
 }
+

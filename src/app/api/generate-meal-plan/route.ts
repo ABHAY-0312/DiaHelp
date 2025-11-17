@@ -71,3 +71,4 @@ Respond with only a valid JSON object conforming to the GenerateMealPlanOutput s
     return NextResponse.json({ error: 'Internal Server Error', message: e.message || 'An unexpected error occurred.' }, { status: 500 });
   }
 }
+

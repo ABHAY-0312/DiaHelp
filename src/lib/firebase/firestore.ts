@@ -217,3 +217,4 @@ export async function getHealthTimeline(userId: string, predictionId: string): P
     throw new Error("Could not retrieve health timeline.");
   }
 }
+

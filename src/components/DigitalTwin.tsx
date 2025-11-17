@@ -202,3 +202,4 @@ export function DigitalTwin({ latestResult }: DigitalTwinProps) {
 }
 
     
+

@@ -28,3 +28,4 @@ export class FirestorePermissionError extends Error {
     Object.setPrototypeOf(this, FirestorePermissionError.prototype);
   }
 }
+

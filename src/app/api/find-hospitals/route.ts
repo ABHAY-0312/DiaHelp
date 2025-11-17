@@ -53,3 +53,4 @@ If no reliable information is found, return an empty list but still include the 
     return NextResponse.json({ error: 'Internal Server Error', message: e.message || 'An unexpected error occurred.' }, { status: 500 });
   }
 }
+

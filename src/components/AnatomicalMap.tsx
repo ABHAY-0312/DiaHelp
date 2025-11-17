@@ -148,3 +148,4 @@ export function AnatomicalMap({ keyFactors }: { keyFactors: string[] }) {
     </div>
   );
 }
+

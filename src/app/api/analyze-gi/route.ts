@@ -50,3 +50,4 @@ If the description is not food-related, provide a low GI and a generic explanati
     return NextResponse.json({ error: 'Internal Server Error', message: e.message || 'An unexpected error occurred.' }, { status: 500 });
   }
 }
+

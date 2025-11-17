@@ -55,3 +55,4 @@ For each event, provide a timeframe, a prediction, and a suggestion. Respond wit
     return NextResponse.json({ error: 'Internal Server Error', message: e.message || 'An unexpected error occurred.' }, { status: 500 });
   }
 }
+

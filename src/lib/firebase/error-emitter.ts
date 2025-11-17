@@ -18,3 +18,4 @@ class TypedEventEmitter<TEvents extends Record<string, any>> extends EventEmitte
 // We can't use `global` or `window` reliably in Next.js, so we create a new instance.
 // This is sufficient for client-side error handling within a single user session.
 export const errorEmitter = new TypedEventEmitter<AppEvents>();
+

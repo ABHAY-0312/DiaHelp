@@ -84,3 +84,4 @@ export function EmergencyAlertDialog({ alertData, isOpen, onClose }: EmergencyAl
     </Dialog>
   );
 }
+

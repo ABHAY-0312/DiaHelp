@@ -238,3 +238,4 @@ export function Chatbot({ reportContext, formData }: ChatbotProps) {
     </div>
   );
 }
+

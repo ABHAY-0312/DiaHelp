@@ -37,7 +37,17 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { question, reportContext, formData } = ChatInputSchema.parse(body);
     
-    const prompt = `You are DiaHelper's digital health assistant. Your role is to answer the user's question.
+    const prompt = `You are DiaHelper's digital health assistant. Your role is to answer the user's question based on the provided context.
+
+**Normal Health Ranges for Reference:**
+- **BMI**: 18.5 - 24.9
+- **Fasting Glucose**: 70 - 100 mg/dL
+- **HbA1c**: < 5.7%
+- **Waist Circumference**: < 94 cm for males, < 80 cm for females
+- **Triglycerides**: < 150 mg/dL
+- **HDL Cholesterol**: > 40 mg/dL for males, > 50 mg/dL for females
+- **Diastolic Blood Pressure**: < 80 mmHg
+- **Sleep Hours**: 7 - 9 hours
 
 **Context: User's Raw Health Data**
 ---
@@ -49,11 +59,12 @@ ${JSON.stringify(formData, null, 2)}
 
 **Instructions:**
 1.  **If the user asks to "analyze" their "report"**:
-    a.  Your ONLY task is to identify health metrics in the "User's Raw Health Data" that are outside of normal ranges (e.g., BMI > 25, Fasting Glucose > 100, HbA1c > 5.7%).
-    b.  You MUST respond with ONLY a bulleted list of the problems.
-    c.  Each bullet point MUST be bold (e.g., "**High BMI**", "**Elevated Fasting Glucose**").
-    d.  DO NOT add any explanations, advice, or introductory sentences. Just the list.
-2.  **For any other question**: Answer the user's question directly based on general health knowledge or the data provided.
+    a.  Your ONLY task is to identify health metrics in the "User's Raw Health Data" that are outside of the "Normal Health Ranges".
+    b.  You MUST respond with ONLY a bulleted list.
+    c.  For each out-of-range metric, format the bullet point like this: "**Problem:** Your value is [User's Value], which is [above/below] the normal range of [Normal Range]. This means [simple explanation]."
+    d.  Example: "**High BMI:** Your BMI is 28, which is above the healthy range of 18.5-24.9. This indicates you are in the overweight category."
+    e.  DO NOT add any other explanations, advice, or introductory/concluding sentences. Just the list.
+2.  **For any other question**: Answer the user's question directly based on general health knowledge or the data provided, in a friendly and conversational tone.
 `;
 
     const result = await model.generateContent(prompt);

@@ -130,10 +130,10 @@ export function AnatomicalMap({ keyFactors }: { keyFactors: string[] }) {
 
         {/* Kidneys */}
         <OrganPopover organ="kidneys">
-             <>
+             <g>
                 <motion.path d="M120 230 C 110 225, 105 265, 120 260 Z" className={cn("cursor-pointer fill-muted-foreground/40 stroke-muted-foreground/50", { 'fill-primary/80 stroke-primary': relevantOrgans.has('kidneys')})} animate={relevantOrgans.has('kidneys') ? pulseAnimation : {}} />
                 <motion.path d="M180 230 C 190 225, 195 265, 180 260 Z" className={cn("cursor-pointer fill-muted-foreground/40 stroke-muted-foreground/50", { 'fill-primary/80 stroke-primary': relevantOrgans.has('kidneys')})} animate={relevantOrgans.has('kidneys') ? pulseAnimation : {}} />
-             </>
+             </g>
         </OrganPopover>
         
         {/* Heart */}

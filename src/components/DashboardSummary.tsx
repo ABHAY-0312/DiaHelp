@@ -16,7 +16,7 @@ interface DashboardSummaryProps {
   logs: HealthLogRecord[];
   tip: HealthTip | null;
   isLoading: boolean;
-  setView: (view: any) => void;
+  setView: (view: string) => void;
 }
 
 const getRiskBadgeVariant = (score: number): "default" | "secondary" | "destructive" => {
@@ -207,4 +207,3 @@ const LoadingSkeleton = () => (
          </div>
     </div>
 )
-

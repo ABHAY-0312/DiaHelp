@@ -95,14 +95,14 @@ export default function Dashboard() {
   const [healthLogs, setHealthLogs] = useState<HealthLogRecord[]>([]);
   const [healthTip, setHealthTip] = useState<HealthTip | null>(null);
   const [isDataLoading, setIsDataLoading] = useState(true);
-  const [view, setView] = useState<View>("summary");
+  const [view, setView] = useState<string>("summary");
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
   const router = useRouter();
   const { setTheme } = useTheme();
 
-  const fetchData = useCallback(async (viewToFetch: View) => {
+  const fetchData = useCallback(async (viewToFetch: string) => {
     if (!user) return;
     setIsDataLoading(true);
     try {
@@ -288,7 +288,7 @@ export default function Dashboard() {
     return names[0][0];
   }
 
-  const handleSetView = (newView: View) => {
+  const handleSetView = (newView: string) => {
     setView(newView);
     setIsSheetOpen(false); 
   };
@@ -352,8 +352,8 @@ export default function Dashboard() {
     }
   }
 
-  const NavButton = ({ currentView, view, setView, children, className }: {currentView: View, view: View, setView: (view: View) => void, children: React.ReactNode, className?: string}) => (
-    <Button variant={currentView === view ? 'secondary' : 'ghost'} onClick={() => setView(view)} className={cn('w-full justify-start gap-3 pl-4 text-base', currentView === view && 'font-bold text-primary', className)}>
+  const NavButton = ({ currentView, view: buttonView, setView: setViewFunc, children, className }: {currentView: string, view: string, setView: (view: string) => void, children: React.ReactNode, className?: string}) => (
+    <Button variant={currentView === buttonView ? 'secondary' : 'ghost'} onClick={() => setViewFunc(buttonView)} className={cn('w-full justify-start gap-3 pl-4 text-base', currentView === buttonView && 'font-bold text-primary', className)}>
         {children}
     </Button>
   );
@@ -537,7 +537,3 @@ export default function Dashboard() {
     </>
   );
 }
-
-    
-
-    

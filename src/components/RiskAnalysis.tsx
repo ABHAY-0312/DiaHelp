@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Skeleton } from "@/components/ui/skeleton";
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend, Cell, CartesianGrid } from "recharts";
 import { Button } from "./ui/button";
-import { Download, FileText, Bot, MessageSquare, Activity, ArrowDown, ArrowUp, CalendarClock, Loader2 } from "lucide-react";
+import { Download, FileText, Bot, MessageSquare, Activity, ArrowDown, ArrowUp, CalendarClock, Loader2, Map } from "lucide-react";
 import { Chatbot } from "./Chatbot";
 import { Checkbox } from "./ui/checkbox";
 import { Label } from "./ui/label";
@@ -22,6 +22,7 @@ import type { User } from "firebase/auth";
 import type { GenerateTimelineOutput, GenerateTimelineInput } from "@/app/api/generate-timeline/route";
 import { saveHealthTimeline, getHealthTimeline } from "@/lib/firebase/firestore";
 import type { HealthTimelineRecord, PredictionRecord } from "@/lib/types";
+import { AnatomicalMap } from "./AnatomicalMap";
 
 
 interface RiskAnalysisProps {
@@ -320,7 +321,7 @@ export function RiskAnalysis({ user, result, isLoading }: RiskAnalysisProps) {
     
     let currentTimelineData = timelineData;
     // Ensure timeline data is loaded before rendering for PDF
-    if (!currentTimelineData) {
+    if (!currentTimelineData && result.id) {
         try {
             const existingTimeline = await getHealthTimeline(user.uid, result.id);
             if (existingTimeline) {
@@ -418,8 +419,9 @@ export function RiskAnalysis({ user, result, isLoading }: RiskAnalysisProps) {
                 </div>
                 
                 <Tabs defaultValue="report" className="w-full no-print">
-                    <TabsList className="grid w-full h-auto grid-cols-2 md:grid-cols-4">
+                    <TabsList className="grid w-full h-auto grid-cols-3 md:grid-cols-5">
                         <TabsTrigger value="report"><Bot className="mr-2 h-4 w-4"/> AI Report</TabsTrigger>
+                        <TabsTrigger value="bodyMap"><Map className="mr-2 h-4 w-4"/> Body Map</TabsTrigger>
                         <TabsTrigger value="suggestions"><Activity className="mr-2 h-4 w-4"/> Suggestions</TabsTrigger>
                         <TabsTrigger value="timeline"><CalendarClock className="mr-2 h-4 w-4"/> Timeline</TabsTrigger>
                         <TabsTrigger value="chat"><MessageSquare className="mr-2 h-4 w-4"/> Chat</TabsTrigger>
@@ -430,6 +432,9 @@ export function RiskAnalysis({ user, result, isLoading }: RiskAnalysisProps) {
                                 <p key={index}>{paragraph}</p>
                             ))}
                         </div>
+                    </TabsContent>
+                    <TabsContent value="bodyMap" className="mt-4">
+                        <AnatomicalMap keyFactors={result.keyFactors.map(f => f.name)} />
                     </TabsContent>
                     <TabsContent value="suggestions" className="mt-4">
                          <HealthSuggestions suggestions={result.healthSuggestions} />

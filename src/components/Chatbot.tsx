@@ -61,10 +61,10 @@ export function Chatbot({ reportContext, formData }: ChatbotProps) {
     const thinkingMessage: Message = { 
         id: 'thinking', 
         type: 'bot', 
-        text: 'Analyzing your health report...'
+        text: isAnalysisRequest ? 'Analyzing your health report...' : 'DiaHelper is thinking...'
     };
 
-    setMessages((prev) => [...prev, userMessage, ...(isAnalysisRequest ? [thinkingMessage] : [])]);
+    setMessages((prev) => [...prev, userMessage, thinkingMessage]);
     
     setInputValue('');
 
@@ -79,17 +79,25 @@ export function Chatbot({ reportContext, formData }: ChatbotProps) {
 
       if (!response.ok) {
         const errorBody = await response.json();
-        if (errorBody.error === 'Inappropriate content detected') {
+        if (errorBody.message && (errorBody.message.includes('503') || errorBody.message.toLowerCase().includes('overloaded'))) {
+            toast({
+                variant: "destructive",
+                title: "AI Service Busy",
+                description: "The AI assistant is currently experiencing high demand. Please try again in a moment.",
+            });
+             setMessages((prev) => prev.filter((m) => m.id !== 'thinking'));
+        } else if (errorBody.error === 'Inappropriate content detected') {
           toast({
             variant: "destructive",
             title: "Inappropriate Content",
             description: "Your message was blocked for safety reasons. Please rephrase it.",
           });
           setMessages((prev) => prev.filter((m) => m.id !== userMessage.id && m.id !== 'thinking'));
-          setIsLoading(false);
-          return;
+        } else {
+            throw new Error(JSON.stringify(errorBody) || 'An unknown error occurred');
         }
-        throw new Error(JSON.stringify(errorBody) || 'An unknown error occurred');
+        setIsLoading(false);
+        return;
       }
       
       const responseData: ChatOutput = await response.json();
@@ -109,12 +117,6 @@ export function Chatbot({ reportContext, formData }: ChatbotProps) {
                 title: "AI Service Rate Limited",
                 description: "You've exceeded the daily usage limit for the AI service. Please try again tomorrow.",
             });
-       } else if (errorMessage.includes("503") || errorMessage.toLowerCase().includes("overloaded")) {
-            toast({
-                variant: "destructive",
-                title: "AI Service Busy",
-                description: "The AI assistant is currently experiencing high demand. Please try again in a moment.",
-            });
        } else {
             toast({
                 variant: 'destructive',
@@ -122,7 +124,7 @@ export function Chatbot({ reportContext, formData }: ChatbotProps) {
                 description: 'Sorry, I had trouble getting a response. Please try again.',
             });
        }
-      setMessages((prev) => prev.filter((m) => m.id !== userMessage.id && m.id !== 'thinking'));
+      setMessages((prev) => prev.filter((m) => m.id !== 'thinking'));
     } finally {
       setIsLoading(false);
     }
@@ -135,7 +137,7 @@ export function Chatbot({ reportContext, formData }: ChatbotProps) {
     // Check if the text is a list (contains '*' as a list item marker)
     if (formattedText.includes('* ')) {
         const listItems = formattedText.split('* ').filter(item => item.trim() !== '');
-        const html = '<ul>' + listItems.map(item => `<li>${item.trim()}</li>`).join('') + '</ul>';
+        const html = '<ul>' + listItems.map(item => `<li class="my-2">${item.trim()}</li>`).join('') + '</ul>';
         return html;
     }
     
@@ -148,52 +150,57 @@ export function Chatbot({ reportContext, formData }: ChatbotProps) {
       <div className="rounded-xl border bg-card p-4 space-y-4 shadow-sm">
         <ScrollArea className="h-72 pr-4">
           <div className="space-y-6">
-            {messages.map((message) => (
-                <div
-                    key={message.id}
-                    className={cn(
-                    'flex items-start gap-4',
-                    message.type === 'user' && 'justify-end'
-                    )}
-                >
-                    {message.type === 'bot' && (
-                       <Avatar className="w-9 h-9 border-2 border-primary">
-                            <div className="flex h-full w-full items-center justify-center rounded-full bg-background">
-                                <Bot className="w-5 h-5 text-primary" />
+            {messages.map((message) => {
+                if (message.id === 'thinking') {
+                     return (
+                        <div key={message.id} className="flex items-start gap-4 p-2">
+                            <Avatar className="w-9 h-9 border-2 border-primary">
+                                <div className="flex h-full w-full items-center justify-center rounded-full bg-background">
+                                <Loader2 className="w-5 h-5 text-primary animate-spin" />
+                                </div>
+                            </Avatar>
+                            <div className="flex-1 rounded-lg bg-secondary p-4 text-sm shadow-sm">
+                                <p className="font-medium text-muted-foreground">{message.text}</p>
                             </div>
-                        </Avatar>
-                    )}
+                        </div>
+                    )
+                }
+
+                return (
                     <div
-                    className={cn(
-                        'flex-1 max-w-[85%] rounded-xl p-4 text-sm shadow-md',
-                        message.type === 'user' ? 'bg-primary text-primary-foreground' : 'bg-background'
-                    )}
+                        key={message.id}
+                        className={cn(
+                        'flex items-start gap-4',
+                        message.type === 'user' && 'justify-end'
+                        )}
                     >
-                         {message.isAnalysis ? (
-                            <div className="prose prose-sm max-w-none text-foreground prose-li:my-1" dangerouslySetInnerHTML={{ __html: formatAnalysisText(message.text) }} />
-                        ) : (
-                            <p className="leading-relaxed">{message.text}</p>
+                        {message.type === 'bot' && (
+                        <Avatar className="w-9 h-9 border-2 border-primary">
+                                <div className="flex h-full w-full items-center justify-center rounded-full bg-background">
+                                    <Bot className="w-5 h-5 text-primary" />
+                                </div>
+                            </Avatar>
+                        )}
+                        <div
+                        className={cn(
+                            'flex-1 max-w-[85%] rounded-xl p-4 text-sm shadow-md',
+                            message.type === 'user' ? 'bg-primary text-primary-foreground' : 'bg-background'
+                        )}
+                        >
+                            {message.isAnalysis ? (
+                                <div className="prose prose-sm max-w-none text-foreground prose-li:my-1" dangerouslySetInnerHTML={{ __html: formatAnalysisText(message.text) }} />
+                            ) : (
+                                <p className="leading-relaxed">{message.text}</p>
+                            )}
+                        </div>
+                        {message.type === 'user' && (
+                            <Avatar className="w-9 h-9">
+                                <AvatarFallback className="bg-primary/20 text-primary font-bold">{getInitials(user?.displayName || user?.email)}</AvatarFallback>
+                            </Avatar>
                         )}
                     </div>
-                    {message.type === 'user' && (
-                        <Avatar className="w-9 h-9">
-                            <AvatarFallback className="bg-primary/20 text-primary font-bold">{getInitials(user?.displayName || user?.email)}</AvatarFallback>
-                        </Avatar>
-                    )}
-                </div>
-            ))}
-             {isLoading && messages.length > 0 && messages[messages.length-1].id !== 'thinking' && messages[messages.length-1].type !== 'bot' &&(
-                <div className="flex items-start gap-4 p-2">
-                    <Avatar className="w-9 h-9 border-2 border-primary">
-                        <div className="flex h-full w-full items-center justify-center rounded-full bg-background">
-                           <Loader2 className="w-5 h-5 text-primary animate-spin" />
-                        </div>
-                    </Avatar>
-                    <div className="flex-1 rounded-lg bg-secondary p-4 text-sm shadow-sm">
-                       <p className="font-medium">DiaHelper is thinking...</p>
-                    </div>
-                </div>
-            )}
+                )
+            })}
           </div>
         </ScrollArea>
         <form onSubmit={handleSendMessage} className="relative">

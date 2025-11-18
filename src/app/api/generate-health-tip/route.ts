@@ -12,9 +12,10 @@ const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
 export async function GET(req: NextRequest) {
   try {
-    const prompt = `Generate a single, interesting, actionable, and encouraging health tip (one sentence). Focus on nutrition, simple exercises, mindfulness, or hydration.
-Respond with only a valid JSON object conforming to the GenerateHealthTipOutput schema.
-Example: "Swapping white bread for whole-wheat is an easy way to boost your fiber intake!"`;
+    const prompt = `Generate a single, interesting, actionable, and encouraging health tip. The tip should be a single sentence.
+Respond with ONLY a valid JSON object that conforms to the following schema: { "tip": "string" }.
+Do not include any other text or markdown formatting.
+Example response: { "tip": "Swapping white bread for whole-wheat is an easy way to boost your fiber intake!" }`;
 
     const openrouterRes = await fetch(OPENROUTER_API_URL, {
       method: 'POST',

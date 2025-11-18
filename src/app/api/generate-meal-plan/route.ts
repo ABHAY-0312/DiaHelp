@@ -1,9 +1,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z, ZodError } from 'zod';
-import {
-  GoogleGenerativeAI,
-} from '@google/generative-ai';
 
 const GenerateMealPlanInputSchema = z.object({
   riskScore: z.number().describe('The diabetes risk score (0-100).'),
@@ -37,12 +34,8 @@ const GenerateMealPlanOutputSchema = z.object({
 });
 export type GenerateMealPlanOutput = z.infer<typeof GenerateMealPlanOutputSchema>;
 
-const API_KEY = process.env.GEMINI_API_KEY || '';
-const genAI = new GoogleGenerativeAI(API_KEY);
-
-const model = genAI.getGenerativeModel({
-  model: 'gemini-2.5-flash'
-});
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || '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';
+const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
 export async function POST(req: NextRequest) {
   try {
@@ -55,14 +48,50 @@ User Profile:
 - Key Factors: ${input.keyFactors.join(', ')}
 ${input.preferences ? `- Preferences: ${input.preferences}` : ''}
 The plan should focus on whole foods, be low in processed sugars, and easy to prepare.
-Respond with only a valid JSON object conforming to the GenerateMealPlanOutput schema, including a 'summary' of the plan's goals.`;
+You must respond with only a valid JSON object that conforms to the following TypeScript type, including a 'summary' of the plan's goals. Do not include any markdown formatting or other text.
+\`\`\`typescript
+type GenerateMealPlanOutput = {
+  breakfast: { name: string; description: string; };
+  lunch: { name: string; description: string; };
+  dinner: { name: string; description: string; };
+  snack: { name: string; description: string; };
+  summary: string;
+}
+\`\`\``;
 
-    const result = await model.generateContent(prompt);
-    const responseText = result.response.text();
-    const responseJson = JSON.parse(responseText.replace(/```json\n?/, "").replace(/```$/, ""));
+    const openrouterRes = await fetch(OPENROUTER_API_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'openai/gpt-3.5-turbo',
+        messages: [
+          { role: 'system', content: 'You are an AI nutritionist that creates personalized meal plans. You always respond with only a valid JSON object as requested.' },
+          { role: 'user', content: prompt },
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0.8,
+      }),
+    });
 
+    if (!openrouterRes.ok) {
+      const error = await openrouterRes.json();
+      throw new Error(error.error?.message || 'OpenRouter API error');
+    }
 
-    return NextResponse.json(responseJson);
+    const data = await openrouterRes.json();
+    const responseText = data.choices?.[0]?.message?.content;
+
+    if (!responseText) {
+      throw new Error('No response content from OpenRouter');
+    }
+
+    const responseJson = JSON.parse(responseText);
+    const validatedResponse = GenerateMealPlanOutputSchema.parse(responseJson);
+
+    return NextResponse.json(validatedResponse);
   } catch (e: any) {
     if (e instanceof ZodError) {
       return NextResponse.json({ error: 'Invalid input', details: e.errors }, { status: 400 });

@@ -1,9 +1,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z, ZodError } from 'zod';
-import {
-  GoogleGenerativeAI,
-} from '@google/generative-ai';
 
 const AnalyzeDocumentInputSchema = z.object({
   documentDataUri: z
@@ -35,31 +32,15 @@ const AnalyzeDocumentOutputSchema = z.object({
 });
 export type AnalyzeDocumentOutput = z.infer<typeof AnalyzeDocumentOutputSchema>;
 
-const API_KEY = process.env.GEMINI_API_KEY || '';
-const genAI = new GoogleGenerativeAI(API_KEY);
-
-const model = genAI.getGenerativeModel({
-  model: 'gemini-2.5-pro'
-});
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || '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';
+const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { documentDataUri } = AnalyzeDocumentInputSchema.parse(body);
 
-    const mimeTypeMatch = documentDataUri.match(/^data:(image\/\w+);base64,/);
-    if (!mimeTypeMatch) {
-      return NextResponse.json({ error: 'Invalid data URI format.' }, { status: 400 });
-    }
-    
-    const imagePart = {
-      inlineData: {
-        data: documentDataUri.split(',')[1],
-        mimeType: mimeTypeMatch[1],
-      },
-    };
-
-    const prompt = `Analyze the provided medical document image with high accuracy. Respond with only a valid JSON object conforming to the AnalyzeDocumentOutput schema.
+    const prompt = `Analyze the provided medical document image with high accuracy. You must respond with only a valid JSON object that conforms to the AnalyzeDocumentOutput schema.
 Instructions:
 1.  **Classify**: Determine if it's a 'lab_result', 'prescription', 'other', or 'not_a_document'.
 2.  **Summarize**: Provide a one-sentence summary.
@@ -67,15 +48,47 @@ Instructions:
     *   For lab results, extract 'label', 'value', and 'referenceRange'. Look for key markers like Glucose, HbA1c, Cholesterol, etc.
     *   For prescriptions, extract 'name', 'dosage', and 'frequency'.
 4.  **Interpret**: Analyze extracted fields. Explain out-of-range values simply. If normal, state that.
-5.  **Disclaimer**: Conclude with: "**Disclaimer: This is an AI-generated interpretation and is not a substitute for professional medical advice. Please consult with a qualified healthcare provider to discuss your results.**"
-6.  **Output**: Populate the JSON fields. Do not invent data.`;
+5.  **Disclaimer**: Your interpretation MUST conclude with the exact text: "**Disclaimer: This is an AI-generated interpretation and is not a substitute for professional medical advice. Please consult with a qualified healthcare provider to discuss your results.**"
+6.  **Output**: Populate the JSON fields. Do not invent data. If a field is not present, omit it or use an empty array. Do not include any markdown formatting or other text outside the JSON object.`;
 
-    const result = await model.generateContent([prompt, imagePart]);
-    const responseText = result.response.text();
-    const responseJson = JSON.parse(responseText.replace(/```json\n?/, "").replace(/```$/, ""));
+    const openrouterRes = await fetch(OPENROUTER_API_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'openai/gpt-4o',
+        messages: [
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: prompt },
+              { type: 'image_url', image_url: { url: documentDataUri } },
+            ],
+          },
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0.2,
+      }),
+    });
 
+    if (!openrouterRes.ok) {
+      const error = await openrouterRes.json();
+      throw new Error(error.error?.message || 'OpenRouter API error');
+    }
 
-    return NextResponse.json(responseJson);
+    const data = await openrouterRes.json();
+    const responseText = data.choices?.[0]?.message?.content;
+
+    if (!responseText) {
+      throw new Error('No response content from OpenRouter');
+    }
+
+    const responseJson = JSON.parse(responseText);
+    const validatedResponse = AnalyzeDocumentOutputSchema.parse(responseJson);
+
+    return NextResponse.json(validatedResponse);
   } catch (e: any) {
     if (e instanceof ZodError) {
       return NextResponse.json({ error: 'Invalid input', details: e.errors }, { status: 400 });

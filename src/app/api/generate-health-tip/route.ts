@@ -73,7 +73,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(validatedResponse);
   } catch (e: any) {
     console.error("Health tip generation failed.", e);
-    return NextResponse.json({ error: 'Internal Server Error', message: e.message || 'An unexpected error occurred.' }, { status: 500 });
+    // Fallback to a default health tip when all retries fail
+    const fallbackTip = {
+      tip: "Stay hydrated by drinking at least 8 glasses of water daily to support your overall health and metabolism."
+    };
+    return NextResponse.json(fallbackTip);
   }
 }
 

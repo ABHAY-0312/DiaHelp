@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z, ZodError } from 'zod';
+import {
+  GoogleGenerativeAI,
+} from '@google/generative-ai';
 
 const GenerateTimelineInputSchema = z.object({
   riskScore: z.number().describe("The user's current diabetes risk score (0-100)."),
@@ -19,60 +22,27 @@ const GenerateTimelineOutputSchema = z.object({
 });
 export type GenerateTimelineOutput = z.infer<typeof GenerateTimelineOutputSchema>;
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const GEMINI_API_URL = 'https://gemini-api.example.com/v2.5/pro';
+const API_KEY = process.env.GEMINI_API_KEY || '';
+const genAI = new GoogleGenerativeAI(API_KEY);
+const model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const input = GenerateTimelineInputSchema.parse(body);
 
-    const events = [
-      { timeframe: '1-2 years', description: 'Short-term health outlook based on current habits.' },
-      { timeframe: '5 years', description: 'Mid-term health projection with potential risks.' },
-      { timeframe: '10+ years', description: 'Long-term health forecast assuming no changes.' },
-    ];
+    const prompt = `Generate a potential future health timeline based on the user's data, assuming NO lifestyle changes. Create three events: 1-2 years, 5 years, and 10+ years.
+The predictions should be realistic but gentle, directly related to the key risk factors, and aim to motivate positive change.
+User's Risk Score: ${input.riskScore}
+User's Key Factors: ${input.keyFactors.join(', ')}
+For each event, provide a timeframe, a prediction, and a suggestion. Respond with only a valid JSON object conforming to the GenerateTimelineOutput schema.`;
 
-    const timeline = await Promise.all(
-      events.map(async (event) => {
-        const prompt = `Based on the user's data:
-- Risk Score: ${input.riskScore}
-- Key Factors: ${input.keyFactors.join(', ')}
+    const result = await model.generateContent(prompt);
+    const responseText = result.response.text();
+    const responseJson = JSON.parse(responseText.replace(/```json\n?/, "").replace(/```$/, ""));
+    const validatedResponse = GenerateTimelineOutputSchema.parse(responseJson);
 
-Generate a health prediction for the timeframe: ${event.timeframe}.
-Description: ${event.description}
-
-Respond with:
-{
-  "timeframe": "string",
-  "prediction": "string",
-  "suggestion": "string"
-}`;
-
-        const geminiRes = await fetch(GEMINI_API_URL, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${GEMINI_API_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            prompt,
-            model: 'gemini-2.5-pro',
-            temperature: 0.7,
-          }),
-        });
-
-        if (!geminiRes.ok) {
-          const error = await geminiRes.json();
-          throw new Error(error.error?.message || 'Gemini API error');
-        }
-
-        const data = await geminiRes.json();
-        return GenerateTimelineOutputSchema.parse(data);
-      })
-    );
-
-    return NextResponse.json({ timeline });
+    return NextResponse.json(validatedResponse);
   } catch (e: any) {
     if (e instanceof ZodError) {
       return NextResponse.json({ error: 'Invalid input', details: e.errors }, { status: 400 });

@@ -11,10 +11,10 @@ const OPENROUTER_API_KEY = process.env.OPENAI_API_KEY;
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
 async function fetchAndValidateHealthTip(retryCount = 0): Promise<HealthTip> {
-  const prompt = `Generate a single, interesting, actionable, and encouraging health tip. The tip should be a single sentence.
-Respond with ONLY a valid JSON object that conforms to the following schema: { "tip": "string" }.
-Do not include any other text or markdown formatting.
-Example response: { "tip": "Swapping white bread for whole-wheat is an easy way to boost your fiber intake!" }`;
+  const prompt = `You are an AI assistant that provides a single health tip. Your response MUST be a valid JSON object and nothing else. It must conform exactly to this schema: { "tip": "string" }. The 'tip' must be a single, encouraging sentence. Do not include any markdown, text, or formatting outside of the JSON object.
+
+Example of a perfect response:
+{ "tip": "Drinking a glass of water before a meal can help you feel fuller and eat less." }`;
 
   const openrouterRes = await fetch(OPENROUTER_API_URL, {
     method: 'POST',
@@ -23,9 +23,9 @@ Example response: { "tip": "Swapping white bread for whole-wheat is an easy way 
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'openai/gpt-3.5-turbo',
+      model: 'openai/gpt-4o',
       messages: [
-        { role: 'system', content: 'You are an AI that provides short, encouraging health tips. You always respond with only a valid JSON object as requested.' },
+        { role: 'system', content: 'You are an AI that provides short, encouraging health tips. You always and only respond with a valid JSON object as requested.' },
         { role: 'user', content: prompt },
       ],
       response_format: { type: "json_object" },

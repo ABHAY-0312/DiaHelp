@@ -19,8 +19,8 @@ const GenerateTimelineOutputSchema = z.object({
 });
 export type GenerateTimelineOutput = z.infer<typeof GenerateTimelineOutputSchema>;
 
-const OPENROUTER_API_KEY = process.env.OPENAI_API_KEY;
-const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const GEMINI_API_URL = 'https://gemini-api.example.com/v2.5/pro';
 
 export async function POST(req: NextRequest) {
   try {
@@ -33,46 +33,26 @@ User's Risk Score: ${input.riskScore}
 User's Key Factors: ${input.keyFactors.join(', ')}
 For each event, provide a timeframe, a prediction, and a suggestion. Respond with only a valid JSON object conforming to the GenerateTimelineOutput schema.`;
 
-    console.log("Received input:", input);
-
-    const openrouterRes = await fetch(OPENROUTER_API_URL, {
+    const geminiRes = await fetch(GEMINI_API_URL, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+        'Authorization': `Bearer ${GEMINI_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'openai/gpt-3.5-turbo',
-        messages: [
-          { role: 'system', content: 'You are an AI that predicts future health timelines based on risk factors. You always respond with only a valid JSON object as requested.' },
-          { role: 'user', content: prompt },
-        ],
-        response_format: { type: "json_object" },
+        prompt,
+        model: 'gemini-2.5-pro',
         temperature: 0.7,
       }),
     });
 
-    console.log("OpenRouter response status:", openrouterRes.status);
-    if (!openrouterRes.ok) {
-      const error = await openrouterRes.json();
-      console.error("OpenRouter API error:", error);
-      throw new Error(error.error?.message || 'OpenRouter API error');
+    if (!geminiRes.ok) {
+      const error = await geminiRes.json();
+      throw new Error(error.error?.message || 'Gemini API error');
     }
 
-    const data = await openrouterRes.json();
-    console.log("Raw response from OpenRouter:", data);
-
-    const responseText = data.choices?.[0]?.message?.content;
-
-    if (!responseText) {
-      console.error("No response content from OpenRouter");
-      throw new Error('No response content from OpenRouter');
-    }
-
-    const responseJson = JSON.parse(responseText);
-    console.log("Parsed response JSON:", responseJson);
-
-    const validatedResponse = GenerateTimelineOutputSchema.parse(responseJson);
+    const data = await geminiRes.json();
+    const validatedResponse = GenerateTimelineOutputSchema.parse(data);
 
     return NextResponse.json(validatedResponse);
   } catch (e: any) {

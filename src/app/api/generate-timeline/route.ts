@@ -24,7 +24,7 @@ export type GenerateTimelineOutput = z.infer<typeof GenerateTimelineOutputSchema
 
 const API_KEY = process.env.GEMINI_API_KEY || '';
 const genAI = new GoogleGenerativeAI(API_KEY);
-const model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
+const model = genAI.getGenerativeModel({ model: 'gemini-2.5-pro' });
 
 export async function POST(req: NextRequest) {
   try {

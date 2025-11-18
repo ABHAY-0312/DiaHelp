@@ -1,9 +1,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z, ZodError } from 'zod';
-import {
-  GoogleGenerativeAI,
-} from '@google/generative-ai';
+import { callGeminiWithFallback } from '@/lib/gemini-client';
 
 const AnalyzeGIInputSchema = z.object({
   mealDescription: z.string().describe('A description of the meal eaten by the user.'),
@@ -17,14 +15,14 @@ const AnalyzeGIOutputSchema = z.object({
 });
 export type AnalyzeGIOutput = z.infer<typeof AnalyzeGIOutputSchema>;
 
-const API_KEY = process.env.GEMINI_API_KEY || '';
-const genAI = new GoogleGenerativeAI(API_KEY);
-
-const model = genAI.getGenerativeModel({
-  model: 'gemini-2.5-pro'
-});
-
 export async function POST(req: NextRequest) {
+  // Fallback GI analysis to ensure we always return something useful
+  const fallbackAnalysis = {
+    estimatedGI: 50,
+    classification: "Medium" as const,
+    explanation: "GI analysis is temporarily unavailable. This is a moderate estimate. Please try again later."
+  };
+
   try {
     const body = await req.json();
     const { mealDescription } = AnalyzeGIInputSchema.parse(body);
@@ -37,19 +35,47 @@ Instructions:
 3.  **Explain**: Provide a 1-2 sentence explanation of what this GI level means for blood sugar.
 If the description is not food-related, provide a low GI and a generic explanation. Do not include any markdown formatting or other text outside the JSON object.`;
 
-    const result = await model.generateContent(prompt);
-    const responseText = result.response.text();
-    const responseJson = JSON.parse(responseText.replace(/```json\n?/, "").replace(/```$/, ""));
+    try {
+      const result = await callGeminiWithFallback(prompt, 'gemini-2.5-pro', 10000);
+      const responseText = result.response.text();
+      
+      if (!responseText || responseText.trim().length === 0) {
+        console.warn("Empty response from Gemini, using fallback");
+        return NextResponse.json(fallbackAnalysis);
+      }
 
-    const validatedResponse = AnalyzeGIOutputSchema.parse(responseJson);
+      // Clean up the response text
+      let cleanedText = responseText.trim();
+      cleanedText = cleanedText.replace(/```json\n?/g, "");
+      cleanedText = cleanedText.replace(/```\n?/g, "");
+      
+      let responseJson;
+      try {
+        responseJson = JSON.parse(cleanedText);
+      } catch (parseError) {
+        console.warn("Failed to parse Gemini response, using fallback:", parseError);
+        return NextResponse.json(fallbackAnalysis);
+      }
 
-    return NextResponse.json(validatedResponse);
+      // Use safe validation
+      const validationResult = AnalyzeGIOutputSchema.safeParse(responseJson);
+      if (!validationResult.success) {
+        console.warn("GI analysis validation failed, using fallback:", validationResult.error);
+        return NextResponse.json(fallbackAnalysis);
+      }
+
+      return NextResponse.json(validationResult.data);
+    } catch (geminiError: any) {
+      console.warn("Gemini API failed, using fallback analysis:", geminiError.message);
+      return NextResponse.json(fallbackAnalysis);
+    }
+
   } catch (e: any) {
     if (e instanceof ZodError) {
       return NextResponse.json({ error: 'Invalid input', details: e.errors }, { status: 400 });
     }
-    console.error("GI analysis failed.", e);
-    return NextResponse.json({ error: 'Internal Server Error', message: e.message || 'An unexpected error occurred.' }, { status: 500 });
+    console.error("GI analysis failed completely:", e);
+    return NextResponse.json(fallbackAnalysis);
   }
 }
 

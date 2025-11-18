@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
 
     const prompt = `Analyze the meal in the photo and respond with only a valid JSON object conforming to the AnalyzeMealOutput schema.
 Instructions:
-1.  **Identify Food Items**: Identify each item, its calories, and carbs. Group identical items and set 'quantity'.
+1.  1.  **Identify Food Items (Mandatory)**: You MUST identify each food item and populate the 'items' array. For each item, provide your best estimate for its name, calories, and carbs. Group identical items and set 'quantity'. If you are uncertain, make a reasonable estimate. Do NOT leave the 'items' array empty if food is present.
 2.  **Provide Feedback**: Give brief, constructive feedback relevant to diabetes risk management.
 3.  **Check for Cheat Meal**: Determine if the meal is a "cheat meal" (high sugar/fat/processed carbs).
 4.  **Generate Recovery Plan**: If it's a cheat meal, create a 'recoveryPlan' with a 'walkReminder', 'waterPrompt', and a healthy 'dinnerSuggestion'. Omit this field otherwise.

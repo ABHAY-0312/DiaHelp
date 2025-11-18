@@ -1,11 +1,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z, ZodError } from 'zod';
-import {
-  GoogleGenerativeAI,
-  HarmCategory,
-  HarmBlockThreshold,
-} from '@google/generative-ai';
+// Removed Gemini import; using fetch for OpenAI
 
 const ChatInputSchema = z.object({
   question: z.string(),
@@ -19,18 +15,8 @@ const ChatOutputSchema = z.object({
 });
 export type ChatOutput = z.infer<typeof ChatOutputSchema>;
 
-const API_KEY = process.env.GEMINI_API_KEY || '';
-const genAI = new GoogleGenerativeAI(API_KEY);
-
-const model = genAI.getGenerativeModel({
-  model: 'gemini-2.5-flash',
-  safetySettings: [
-    { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
-    { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
-    { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
-    { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
-  ]
-});
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || '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';
+const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
 export async function POST(req: NextRequest) {
   try {
@@ -67,9 +53,34 @@ ${JSON.stringify(formData, null, 2)}
 2.  **For any other question**: Answer the user's question directly based on general health knowledge or the data provided, in a friendly and conversational tone. If you need to create a list, use a '*' for each bullet point.
 `;
 
-    const result = await model.generateContent(prompt);
-    const responseText = result.response.text();
-    
+    const openrouterRes = await fetch(OPENROUTER_API_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+        'Content-Type': 'application/json',
+        // Optionally add these:
+        // 'HTTP-Referer': 'https://your-site-url.com',
+        // 'X-Title': 'DiaHelp',
+      },
+      body: JSON.stringify({
+        model: 'openai/gpt-4o',
+        messages: [
+          { role: 'system', content: "You are DiaHelper's digital health assistant. Your role is to answer the user's question based on the provided context.\n\nNormal Health Ranges for Reference:\n- BMI: 18.5 - 24.9\n- Fasting Glucose: 70 - 100 mg/dL\n- HbA1c: < 5.7%\n- Waist Circumference: < 94 cm for males, < 80 cm for females\n- Triglycerides: < 150 mg/dL\n- HDL Cholesterol: > 40 mg/dL for males, > 50 mg/dL for females\n- Diastolic Blood Pressure: < 80 mmHg\n- Sleep Hours: 7 - 9 hours\n\nContext: User's Raw Health Data\n---\n" + JSON.stringify(formData, null, 2) + "\n---\n" },
+          { role: 'user', content: question },
+        ],
+        max_tokens: 512,
+        temperature: 0.7,
+      }),
+    });
+
+    if (!openrouterRes.ok) {
+      const error = await openrouterRes.json();
+      throw new Error(error.error?.message || 'OpenRouter API error');
+    }
+
+    const data = await openrouterRes.json();
+    const responseText = data.choices?.[0]?.message?.content || 'Sorry, I could not generate a response.';
+
     const responseJson = { answer: responseText };
 
     return NextResponse.json(responseJson);

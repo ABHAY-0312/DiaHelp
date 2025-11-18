@@ -205,7 +205,7 @@ export function MealAnalyzer() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {analysis.items.map((item, index) => (
+                     {analysis.items && analysis.items.map((item, index) => (
                       <TableRow key={index} className="hover:bg-primary/5">
                         <TableCell className="font-medium">{item.name}</TableCell>
                         <TableCell className="text-center">{item.quantity}</TableCell>

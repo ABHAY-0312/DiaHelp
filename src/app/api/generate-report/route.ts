@@ -1,14 +1,11 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z, ZodError } from 'zod';
-import {
-  GoogleGenerativeAI,
-} from '@google/generative-ai';
 
 const GenerateReportInputSchema = z.object({
   patientName: z.string().describe('The name of the patient.'),
   riskScore: z.number().describe('The calculated diabetes risk score (0-100).'),
-  confidenceScore: z.number().describe('The model\'s confidence in the prediction (0-100).'),
+  confidenceScore: z.number().describe("The model's confidence in the prediction (0-100)."),
   keyFactors: z
     .array(z.string())
     .describe('The top key factors contributing to the risk score (e.g., "High BMI", "Elevated Glucose").'),
@@ -17,44 +14,67 @@ const GenerateReportInputSchema = z.object({
 export type GenerateReportInput = z.infer<typeof GenerateReportInputSchema>;
 
 const GenerateReportOutputSchema = z.object({
-  report: z.string().describe('A concise, personalized diabetes risk assessment summary.'),
+  report: z.string().describe('A concise, personalized diabetes risk assessment summary formatted as an HTML string.'),
 });
 export type GenerateReportOutput = z.infer<typeof GenerateReportOutputSchema>;
 
-const API_KEY = process.env.GEMINI_API_KEY || '';
-const genAI = new GoogleGenerativeAI(API_KEY);
-
-const model = genAI.getGenerativeModel({
-  model: 'gemini-2.5-pro'
-});
+const OPENROUTER_API_KEY = process.env.OPENAI_API_KEY;
+const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const input = GenerateReportInputSchema.parse(body);
 
-    const prompt = `Generate a brief, encouraging, and personalized health summary for ${input.patientName}. Respond with only a valid JSON object with a single "report" string field.
+    const prompt = `Generate a brief, encouraging, and personalized health summary for ${input.patientName}. Respond with only a valid JSON object with a single "report" field containing an HTML string.
 
-Simulated risk score: ${input.riskScore}/100. (Model confidence: ${input.confidenceScore}%)
+Data:
+- Risk Score: ${input.riskScore}/100 (Model confidence: ${input.confidenceScore}%)
+- Key Risk Factors: ${input.keyFactors.join(', ')}
+- Personalized Suggestions: ${input.healthSuggestions.join('; ')}
 
-Key Risk Factors:
-${input.keyFactors.map(kf => `- **${kf}**: This factor played a significant role. Managing it can have a positive impact.`).join('\n')}
+Instructions:
+1.  Write a concise and positive summary.
+2.  Use HTML tags for formatting (e.g., <p>, <strong>, <ul>, <li>).
+3.  Start with a paragraph summarizing the risk score.
+4.  Create a <ul> list for the key risk factors, using <li> for each.
+5.  Create another <ul> list for the personalized suggestions.
+6.  End with a paragraph reminding the user to consult a healthcare professional.
+7.  The entire output for the "report" field must be a single, valid HTML string.`;
 
-Personalized Suggestions:
-${input.healthSuggestions.map(hs => `- ${hs}`).join('\n')}
+    const openrouterRes = await fetch(OPENROUTER_API_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'openai/gpt-3.5-turbo',
+        messages: [
+          { role: 'system', content: 'You are a helpful AI assistant that generates personalized health reports as HTML strings within a JSON object.' },
+          { role: 'user', content: prompt },
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0.5,
+      }),
+    });
 
-Keep the summary concise and positive. End by reminding the user to consult a healthcare professional.`;
+    if (!openrouterRes.ok) {
+      const error = await openrouterRes.json();
+      throw new Error(error.error?.message || 'OpenRouter API error');
+    }
 
-    const result = await model.generateContent(prompt);
-    let responseText = result.response.text();
-    
-    // Replace markdown bold with strong tags
-    responseText = responseText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-    
-    const responseJson = JSON.parse(responseText.replace(/```json\n?/, "").replace(/```$/, ""));
+    const data = await openrouterRes.json();
+    const responseText = data.choices?.[0]?.message?.content;
 
+    if (!responseText) {
+      throw new Error('No response content from OpenRouter');
+    }
 
-    return NextResponse.json(responseJson);
+    const responseJson = JSON.parse(responseText);
+    const validatedResponse = GenerateReportOutputSchema.parse(responseJson);
+
+    return NextResponse.json(validatedResponse);
   } catch (e: any) {
     if (e instanceof ZodError) {
       return NextResponse.json({ error: 'Invalid input', details: e.errors }, { status: 400 });

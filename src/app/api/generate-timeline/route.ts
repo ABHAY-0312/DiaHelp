@@ -1,9 +1,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z, ZodError } from 'zod';
-import {
-  GoogleGenerativeAI,
-} from '@google/generative-ai';
 
 const GenerateTimelineInputSchema = z.object({
   riskScore: z.number().describe("The user's current diabetes risk score (0-100)."),
@@ -23,12 +20,8 @@ const GenerateTimelineOutputSchema = z.object({
 });
 export type GenerateTimelineOutput = z.infer<typeof GenerateTimelineOutputSchema>;
 
-const API_KEY = process.env.GEMINI_API_KEY || '';
-const genAI = new GoogleGenerativeAI(API_KEY);
-
-const model = genAI.getGenerativeModel({
-  model: 'gemini-2.5-pro'
-});
+const OPENROUTER_API_KEY = process.env.OPENAI_API_KEY;
+const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
 export async function POST(req: NextRequest) {
   try {
@@ -41,9 +34,36 @@ User's Risk Score: ${input.riskScore}
 User's Key Factors: ${input.keyFactors.join(', ')}
 For each event, provide a timeframe, a prediction, and a suggestion. Respond with only a valid JSON object conforming to the GenerateTimelineOutput schema.`;
 
-    const result = await model.generateContent(prompt);
-    const responseText = result.response.text();
-    const responseJson = JSON.parse(responseText.replace(/```json\n?/, "").replace(/```$/, ""));
+    const openrouterRes = await fetch(OPENROUTER_API_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'openai/gpt-3.5-turbo',
+        messages: [
+          { role: 'system', content: 'You are an AI that predicts future health timelines based on risk factors. You always respond with only a valid JSON object as requested.' },
+          { role: 'user', content: prompt },
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0.7,
+      }),
+    });
+
+    if (!openrouterRes.ok) {
+      const error = await openrouterRes.json();
+      throw new Error(error.error?.message || 'OpenRouter API error');
+    }
+
+    const data = await openrouterRes.json();
+    const responseText = data.choices?.[0]?.message?.content;
+
+    if (!responseText) {
+      throw new Error('No response content from OpenRouter');
+    }
+
+    const responseJson = JSON.parse(responseText);
     const validatedResponse = GenerateTimelineOutputSchema.parse(responseJson);
 
     return NextResponse.json(validatedResponse);

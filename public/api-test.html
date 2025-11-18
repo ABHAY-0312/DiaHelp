@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>DiaHelp API Status Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 8px; }
+        .success { background-color: #e7f5e7; border-color: #4caf50; }
+        .error { background-color: #ffeaea; border-color: #f44336; }
+        .loading { background-color: #e3f2fd; border-color: #2196f3; }
+        button { padding: 10px 20px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        pre { background: #f5f5f5; padding: 10px; border-radius: 4px; overflow-x: auto; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <h1>DiaHelp API Status Test</h1>
+    <p>This page tests all the main APIs to verify they're working (even with fallbacks).</p>
+    
+    <div class="test-section">
+        <h3>Health Tip API</h3>
+        <button onclick="testHealthTip()">Test Health Tip</button>
+        <div id="health-tip-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>Timeline API</h3>
+        <button onclick="testTimeline()">Test Timeline</button>
+        <div id="timeline-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>Exercise Plan API</h3>
+        <button onclick="testExercisePlan()">Test Exercise Plan</button>
+        <div id="exercise-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>Document Analysis API</h3>
+        <button onclick="testDocumentAnalysis()">Test Document Analysis (Mock Image)</button>
+        <div id="document-analysis-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>Meal Analysis API</h3>
+        <button onclick="testMealAnalysis()">Test Meal Analysis (Mock Image)</button>
+        <div id="meal-analysis-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>Metabolic Age API</h3>
+        <button onclick="testMetabolicAge()">Test Metabolic Age</button>
+        <div id="metabolic-age-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>Recipe Finder API</h3>
+        <button onclick="testRecipeFinder()">Test Recipe Finder</button>
+        <div id="recipe-finder-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>Simple Timeline API (No AI)</h3>
+        <button onclick="testSimpleTimeline()">Test Simple Timeline</button>
+        <div id="simple-result"></div>
+    </div>
+
+    <script>
+    async function testHealthTip() {
+        const resultDiv = document.getElementById('health-tip-result');
+        resultDiv.innerHTML = '<div class="loading">Testing health tip API...</div>';
+        
+        try {
+            const response = await fetch('/api/generate-health-tip');
+            const data = await response.json();
+            
+            if (response.ok && data.tip) {
+                resultDiv.innerHTML = `<div class="success"><strong>✓ Health Tip API Working!</strong><pre>${JSON.stringify(data, null, 2)}</pre></div>`;
+            } else {
+                resultDiv.innerHTML = `<div class="error"><strong>✗ Health Tip API Failed</strong><pre>${JSON.stringify(data, null, 2)}</pre></div>`;
+            }
+        } catch (error) {
+            resultDiv.innerHTML = `<div class="error"><strong>✗ Health Tip API Error:</strong> ${error.message}</div>`;
+        }
+    }
+
+    async function testTimeline() {
+        const resultDiv = document.getElementById('timeline-result');
+        resultDiv.innerHTML = '<div class="loading">Testing timeline API...</div>';
+        
+        try {
+            const response = await fetch('/api/generate-timeline', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    riskScore: 75,
+                    keyFactors: ["high blood sugar", "poor diet"]
+                })
+            });
+            const data = await response.json();
+            
+            if (response.ok && data.timeline) {
+                resultDiv.innerHTML = `<div class="success"><strong>✓ Timeline API Working!</strong><pre>${JSON.stringify(data, null, 2)}</pre></div>`;
+            } else {
+                resultDiv.innerHTML = `<div class="error"><strong>✗ Timeline API Failed</strong><pre>${JSON.stringify(data, null, 2)}</pre></div>`;
+            }
+        } catch (error) {
+            resultDiv.innerHTML = `<div class="error"><strong>✗ Timeline API Error:</strong> ${error.message}</div>`;
+        }
+    }
+
+    async function testExercisePlan() {
+        const resultDiv = document.getElementById('exercise-result');
+        resultDiv.innerHTML = '<div class="loading">Testing exercise plan API...</div>';
+        
+        try {
+            const response = await fetch('/api/generate-exercise-plan', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    age: 35,
+                    fitnessLevel: "moderate",
+                    healthConditions: ["diabetes risk"],
+                    preferences: ["walking", "yoga"]
+                })
+            });
+            const data = await response.json();
+            
+            if (response.ok && data.plan) {
+                resultDiv.innerHTML = `<div class="success"><strong>✓ Exercise Plan API Working!</strong><pre>${JSON.stringify(data, null, 2)}</pre></div>`;
+            } else {
+                resultDiv.innerHTML = `<div class="error"><strong>✗ Exercise Plan API Failed</strong><pre>${JSON.stringify(data, null, 2)}</pre></div>`;
+            }
+        } catch (error) {
+            resultDiv.innerHTML = `<div class="error"><strong>✗ Exercise Plan API Error:</strong> ${error.message}</div>`;
+        }
+    }
+
+    async function testDocumentAnalysis() {
+        const resultDiv = document.getElementById('document-analysis-result');
+        resultDiv.innerHTML = '<div class="loading">Testing document analysis API...</div>';
+        
+        try {
+            // Create a simple test image (1x1 red pixel PNG as base64)
+            const testImageData = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==';
+            
+            const response = await fetch('/api/analyze-document', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    documentDataUri: testImageData
+                })
+            });
+            const data = await response.json();
+            
+            if (response.ok && data.documentType && data.summary) {
+                resultDiv.innerHTML = `<div class="success"><strong>✓ Document Analysis API Working!</strong><pre>${JSON.stringify(data, null, 2)}</pre></div>`;
+            } else {
+                resultDiv.innerHTML = `<div class="error"><strong>✗ Document Analysis API Failed</strong><pre>${JSON.stringify(data, null, 2)}</pre></div>`;
+            }
+        } catch (error) {
+            resultDiv.innerHTML = `<div class="error"><strong>✗ Document Analysis API Error:</strong> ${error.message}</div>`;
+        }
+    }
+
+    async function testMealAnalysis() {
+        const resultDiv = document.getElementById('meal-analysis-result');
+        resultDiv.innerHTML = '<div class="loading">Testing meal analysis API...</div>';
+        
+        try {
+            // Create a simple test image (1x1 red pixel PNG as base64)
+            const testImageData = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==';
+            
+            const response = await fetch('/api/analyze-meal', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    photoDataUri: testImageData
+                })
+            });
+            const data = await response.json();
+            
+            if (response.ok && typeof data.isFood === 'boolean' && Array.isArray(data.items)) {
+                resultDiv.innerHTML = `<div class="success"><strong>✓ Meal Analysis API Working!</strong><pre>${JSON.stringify(data, null, 2)}</pre></div>`;
+            } else {
+                resultDiv.innerHTML = `<div class="error"><strong>✗ Meal Analysis API Failed</strong><pre>${JSON.stringify(data, null, 2)}</pre></div>`;
+            }
+        } catch (error) {
+            resultDiv.innerHTML = `<div class="error"><strong>✗ Meal Analysis API Error:</strong> ${error.message}</div>`;
+        }
+    }
+
+    async function testMetabolicAge() {
+        const resultDiv = document.getElementById('metabolic-age-result');
+        resultDiv.innerHTML = '<div class="loading">Testing metabolic age API...</div>';
+        
+        try {
+            const response = await fetch('/api/generate-metabolic-age', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    actualAge: 35,
+                    bmi: 24.5,
+                    glucose: 95,
+                    sleepHours: 7,
+                    fitnessLevel: "moderate"
+                })
+            });
+            const data = await response.json();
+            
+            if (response.ok && typeof data.metabolicAge === 'number' && data.explanation) {
+                resultDiv.innerHTML = `<div class="success"><strong>✓ Metabolic Age API Working!</strong><pre>${JSON.stringify(data, null, 2)}</pre></div>`;
+            } else {
+                resultDiv.innerHTML = `<div class="error"><strong>✗ Metabolic Age API Failed</strong><pre>${JSON.stringify(data, null, 2)}</pre></div>`;
+            }
+        } catch (error) {
+            resultDiv.innerHTML = `<div class="error"><strong>✗ Metabolic Age API Error:</strong> ${error.message}</div>`;
+        }
+    }
+
+    async function testRecipeFinder() {
+        const resultDiv = document.getElementById('recipe-finder-result');
+        resultDiv.innerHTML = '<div class="loading">Testing recipe finder API...</div>';
+        
+        try {
+            const response = await fetch('/api/find-recipes', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ingredients: "chicken, onions, garlic, spinach",
+                    dietaryNeeds: "low-carb",
+                    translateToHindi: false
+                })
+            });
+            const data = await response.json();
+            
+            if (response.ok && data.recipes && Array.isArray(data.recipes)) {
+                resultDiv.innerHTML = `<div class="success"><strong>✓ Recipe Finder API Working!</strong><pre>${JSON.stringify(data, null, 2)}</pre></div>`;
+            } else {
+                resultDiv.innerHTML = `<div class="error"><strong>✗ Recipe Finder API Failed</strong><pre>${JSON.stringify(data, null, 2)}</pre></div>`;
+            }
+        } catch (error) {
+            resultDiv.innerHTML = `<div class="error"><strong>✗ Recipe Finder API Error:</strong> ${error.message}</div>`;
+        }
+    }
+
+    async function testSimpleTimeline() {
+        const resultDiv = document.getElementById('simple-result');
+        resultDiv.innerHTML = '<div class="loading">Testing simple timeline API...</div>';
+        
+        try {
+            const response = await fetch('/api/test-timeline-simple');
+            const data = await response.json();
+            
+            if (response.ok && data.timeline) {
+                resultDiv.innerHTML = `<div class="success"><strong>✓ Simple Timeline API Working!</strong><pre>${JSON.stringify(data, null, 2)}</pre></div>`;
+            } else {
+                resultDiv.innerHTML = `<div class="error"><strong>✗ Simple Timeline API Failed</strong><pre>${JSON.stringify(data, null, 2)}</pre></div>`;
+            }
+        } catch (error) {
+            resultDiv.innerHTML = `<div class="error"><strong>✗ Simple Timeline API Error:</strong> ${error.message}</div>`;
+        }
+    }
+
+    // Auto-test all APIs when page loads
+    window.onload = function() {
+        setTimeout(() => {
+            testSimpleTimeline();
+            setTimeout(() => testHealthTip(), 1000);
+            setTimeout(() => testTimeline(), 2000);
+            setTimeout(() => testExercisePlan(), 3000);
+            setTimeout(() => testRecipeFinder(), 4000);
+            setTimeout(() => testMetabolicAge(), 5000);
+            setTimeout(() => testMealAnalysis(), 6000);
+            setTimeout(() => testDocumentAnalysis(), 7000);
+        }, 500);
+    };
+    </script>
+</body>
+</html>

@@ -1,6 +1,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z, ZodError } from 'zod';
+import { callOpenAIWithFallback } from '@/lib/openai-client';
 
 const GenerateExercisePlanInputSchema = z.object({
   age: z.number().describe('The age of the user.'),
@@ -41,9 +42,6 @@ const GenerateExercisePlanOutputSchema = z.object({
 export type GenerateExercisePlanOutput = z.infer<
   typeof GenerateExercisePlanOutputSchema
 >;
-
-const OPENROUTER_API_KEY = process.env.OPENAI_API_KEY;
-const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
 export async function POST(req: NextRequest) {
   // Fallback exercise plan to ensure we always return something useful
@@ -100,55 +98,72 @@ export async function POST(req: NextRequest) {
     const input = GenerateExercisePlanInputSchema.parse(body);
 
     const prompt = `Create a 7-day balanced exercise plan for a user with Age: ${input.age}, BMI: ${input.bmi}, Fitness Level: ${input.fitnessLevel}.
-The plan should be suitable for managing diabetes risk, including cardio, strength, and rest days.
+
+You must respond with ONLY a valid JSON object in this exact format:
+{
+  "weeklySummary": "Brief encouraging summary of the weekly plan and its benefits",
+  "dailyPlans": [
+    {
+      "day": "Monday",
+      "focus": "Cardio", 
+      "activity": "Specific activity description",
+      "duration": "20-30 minutes"
+    },
+    {
+      "day": "Tuesday",
+      "focus": "Strength Training",
+      "activity": "Specific activity description", 
+      "duration": "25 minutes"
+    }
+  ]
+}
+
+Create a plan for 7 days including 5 active days and 2 rest/recovery days.
+Fitness guidelines:
 - 'sedentary'/'light': Low-impact activities (walking, stretching).
 - 'moderate': Moderate-intensity (jogging, light weights).
 - 'active': Higher-intensity workouts.
-Create a plan for 5 active days and 2 rest/recovery days.
-Respond with only a valid JSON object conforming to the GenerateExercisePlanOutput schema, including a 'weeklySummary' and 'dailyPlans'.`;
+The plan should be suitable for managing diabetes risk.`;
 
-    const openrouterRes = await fetch(OPENROUTER_API_URL, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'openai/gpt-3.5-turbo',
-        messages: [
-          { role: 'system', content: 'You are an AI fitness planner that creates personalized exercise schedules. You always respond with only a valid JSON object as requested.' },
+    try {
+      const response = await callOpenAIWithFallback(
+        "gpt-3.5-turbo",
+        [
+          { role: 'system', content: 'You must respond with only valid JSON in the exact format requested. Ensure all fields are strings as specified.' },
           { role: 'user', content: prompt },
-        ],
-        response_format: { type: "json_object" },
-        temperature: 0.6,
-      }),
-    });
+        ]
+      );
 
-    if (!openrouterRes.ok) {
-      console.warn("OpenRouter API error, using fallback exercise plan");
+      console.log("OpenAI exercise plan response:", response);
+
+      if (!response || !response.content) {
+        console.warn("No response content from OpenAI, using fallback");
+        return NextResponse.json(fallbackPlan);
+      }
+
+      let responseJson;
+      try {
+        responseJson = JSON.parse(response.content);
+        console.log("Parsed exercise plan JSON:", responseJson);
+      } catch (parseError) {
+        console.warn("Failed to parse exercise plan response, using fallback:", parseError);
+        return NextResponse.json(fallbackPlan);
+      }
+      
+      // Use safe validation
+      const validationResult = GenerateExercisePlanOutputSchema.safeParse(responseJson);
+      if (!validationResult.success) {
+        console.warn("Exercise plan validation failed, using fallback:", validationResult.error);
+        return NextResponse.json(fallbackPlan);
+      }
+
+      return NextResponse.json(validationResult.data);
+    } catch (e: any) {
+      console.error("Exercise plan generation failed, using fallback:", e);
       return NextResponse.json(fallbackPlan);
     }
-
-    const data = await openrouterRes.json();
-    const responseText = data.choices?.[0]?.message?.content;
-
-    if (!responseText) {
-      console.warn("No response content from OpenRouter, using fallback");
-      return NextResponse.json(fallbackPlan);
-    }
-
-    const responseJson = JSON.parse(responseText);
-    
-    // Use safe validation
-    const validationResult = GenerateExercisePlanOutputSchema.safeParse(responseJson);
-    if (!validationResult.success) {
-      console.warn("Exercise plan validation failed, using fallback:", validationResult.error);
-      return NextResponse.json(fallbackPlan);
-    }
-
-    return NextResponse.json(validationResult.data);
   } catch (e: any) {
-    console.error("Exercise plan generation failed, using fallback:", e);
+    console.error("Exercise plan API failed, using fallback:", e);
     return NextResponse.json(fallbackPlan);
   }
 }

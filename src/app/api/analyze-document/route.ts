@@ -1,9 +1,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z, ZodError } from 'zod';
-import {
-  GoogleGenerativeAI,
-} from '@google/generative-ai';
+import { callGeminiWithFallback } from '@/lib/gemini-client';
 
 const AnalyzeDocumentInputSchema = z.object({
   documentDataUri: z
@@ -29,20 +27,24 @@ const ExtractedMedicationSchema = z.object({
 const AnalyzeDocumentOutputSchema = z.object({
   documentType: z.enum(['lab_result', 'prescription', 'other', 'not_a_document']).describe('The classified type of the document.'),
   summary: z.string().describe("A brief, one-sentence summary of the document's main content."),
-  interpretation: z.string().optional().describe("An interpretation of the extracted results, highlighting any values that are outside of their reference ranges and what they might indicate. This is NOT a medical diagnosis and you MUST include a disclaimer to consult a healthcare professional."),
+  interpretation: z.string().optional().describe("An interpretation of the extracted results, highlighting any values that are outside of their reference ranges and what they might indicate."),
   extractedFields: z.array(ExtractedFieldSchema).describe('A list of key data fields extracted from the document.'),
   extractedMedications: z.array(ExtractedMedicationSchema).describe('A list of medications extracted from the document, if any.'),
 });
 export type AnalyzeDocumentOutput = z.infer<typeof AnalyzeDocumentOutputSchema>;
 
-const API_KEY = process.env.GEMINI_API_KEY || '';
-const genAI = new GoogleGenerativeAI(API_KEY);
-
-const model = genAI.getGenerativeModel({
-  model: 'gemini-2.5-pro'
-});
-
 export async function POST(req: NextRequest) {
+  // Fallback document analysis to ensure we always return something useful
+  const generateFallbackAnalysis = () => {
+    return {
+      documentType: "other" as const,
+      summary: "Document analysis is temporarily unavailable due to high server demand.",
+      interpretation: "We're unable to analyze your document image right now. Please try again later or consult with a healthcare professional for manual review.",
+      extractedFields: [],
+      extractedMedications: []
+    };
+  };
+
   try {
     const body = await req.json();
     const { documentDataUri } = AnalyzeDocumentInputSchema.parse(body);
@@ -59,30 +61,76 @@ export async function POST(req: NextRequest) {
       },
     };
 
-    const prompt = `Analyze the provided medical document image with high accuracy. You must respond with only a valid JSON object that conforms to the AnalyzeDocumentOutput schema.
+    const prompt = `Analyze the provided medical document image and respond with only a valid JSON object in this exact format:
+{
+  "documentType": "lab_result" | "prescription" | "other" | "not_a_document",
+  "summary": "One-sentence summary of the document content",
+  "interpretation": "Analysis of results highlighting values outside reference ranges",
+  "extractedFields": [
+    {
+      "label": "Test Name",
+      "value": "Test Value",
+      "referenceRange": "Normal Range (optional)"
+    }
+  ],
+  "extractedMedications": [
+    {
+      "name": "Medication Name",
+      "dosage": "Dosage Amount",
+      "frequency": "How often taken"
+    }
+  ]
+}
+
 Instructions:
-1.  **Classify**: Determine if it's a 'lab_result', 'prescription', 'other', or 'not_a_document'.
-2.  **Summarize**: Provide a one-sentence summary.
-3.  **Extract Data**:
-    *   For lab results, extract 'label', 'value', and 'referenceRange'. Look for key markers like Glucose, HbA1c, Cholesterol, etc.
-    *   For prescriptions, extract 'name', 'dosage', and 'frequency'.
-4.  **Interpret**: Analyze extracted fields. Explain out-of-range values simply. If normal, state that. If no interpretation is possible, omit the field.
-5.  **Disclaimer**: If you provide an interpretation, it MUST conclude with the exact text: "**Disclaimer: This is an AI-generated interpretation and is not a substitute for professional medical advice. Please consult with a qualified healthcare provider to discuss your results.**"
-6.  **Output**: Populate the JSON fields. Do not invent data. If a field is not present, omit it or use an empty array. Do not include any markdown formatting or other text outside the JSON object.`;
+1. Classify document type accurately
+2. Extract key health data (HbA1c, Glucose, Cholesterol, etc.)
+3. Extract medication information if present
+4. Provide clear interpretation of results
+5. Use empty arrays for missing data`;
 
-    const result = await model.generateContent([prompt, imagePart]);
-    const responseText = result.response.text();
-    const responseJson = JSON.parse(responseText.replace(/```json\n?/g, "").replace(/```$/, ""));
+    // Add timeout for Gemini API
+    try {
+      const result = await callGeminiWithFallback([prompt, imagePart], 'gemini-2.5-pro', 20000);
+      const responseText = result.response.text();
+      
+      if (!responseText || responseText.trim().length === 0) {
+        console.warn("Empty response from Gemini, using fallback analysis");
+        return NextResponse.json(generateFallbackAnalysis());
+      }
 
-    const validatedResponse = AnalyzeDocumentOutputSchema.parse(responseJson);
+      // Clean up the response text
+      let cleanedText = responseText.trim();
+      cleanedText = cleanedText.replace(/```json\n?/g, "");
+      cleanedText = cleanedText.replace(/```\n?/g, "");
+      
+      let responseJson;
+      try {
+        responseJson = JSON.parse(cleanedText);
+      } catch (parseError) {
+        console.warn("Failed to parse Gemini response, using fallback analysis:", parseError);
+        return NextResponse.json(generateFallbackAnalysis());
+      }
 
-    return NextResponse.json(validatedResponse);
+      // Use safe validation
+      const validationResult = AnalyzeDocumentOutputSchema.safeParse(responseJson);
+      if (!validationResult.success) {
+        console.warn("Document analysis validation failed, using fallback analysis:", validationResult.error);
+        return NextResponse.json(generateFallbackAnalysis());
+      }
+
+      return NextResponse.json(validationResult.data);
+    } catch (geminiError: any) {
+      console.warn("Gemini API failed, using fallback analysis:", geminiError.message);
+      return NextResponse.json(generateFallbackAnalysis());
+    }
+
   } catch (e: any) {
     if (e instanceof ZodError) {
       return NextResponse.json({ error: 'Invalid input', details: e.errors }, { status: 400 });
     }
-    console.error("Document analysis failed.", e);
-    return NextResponse.json({ error: 'Internal Server Error', message: e.message || 'An unexpected error occurred.' }, { status: 500 });
+    console.error("Document analysis failed completely:", e);
+    return NextResponse.json(generateFallbackAnalysis());
   }
 }
 

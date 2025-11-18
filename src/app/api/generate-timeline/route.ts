@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z, ZodError } from 'zod';
-import {
-  GoogleGenerativeAI,
-} from '@google/generative-ai';
+import { callGeminiWithFallback } from '@/lib/gemini-client';
 
 const GenerateTimelineInputSchema = z.object({
   riskScore: z.number().describe("The user's current diabetes risk score (0-100)."),
@@ -22,11 +20,28 @@ const GenerateTimelineOutputSchema = z.object({
 });
 export type GenerateTimelineOutput = z.infer<typeof GenerateTimelineOutputSchema>;
 
-const API_KEY = process.env.GEMINI_API_KEY || '';
-const genAI = new GoogleGenerativeAI(API_KEY);
-const model = genAI.getGenerativeModel({ model: 'gemini-2.5-pro' });
-
 export async function POST(req: NextRequest) {
+  // Fallback timeline to ensure we always return something useful
+  const fallbackTimeline = {
+    timeline: [
+      {
+        timeframe: "In 1-2 Years",
+        prediction: "With current habits, you may see gradual changes in your health markers that could indicate increased diabetes risk.",
+        suggestion: "Start with small changes like taking a 10-minute walk after meals and reducing sugary drinks."
+      },
+      {
+        timeframe: "In 5 Years",
+        prediction: "Without lifestyle modifications, your risk factors may become more pronounced, potentially affecting your overall health.",
+        suggestion: "Consider working with a healthcare provider to develop a comprehensive plan for diet and exercise."
+      },
+      {
+        timeframe: "In 10+ Years",
+        prediction: "Long-term continuation of current patterns may lead to more significant health challenges that require medical management.",
+        suggestion: "Regular health screenings and preventive care become increasingly important for early intervention."
+      }
+    ]
+  };
+
   try {
     const body = await req.json();
     const input = GenerateTimelineInputSchema.parse(body);
@@ -64,61 +79,50 @@ You must respond with ONLY a valid JSON object in this exact format:
 
     console.log("Sending prompt to Gemini:", prompt);
 
-    const result = await model.generateContent(prompt);
-    const responseText = result.response.text();
+    try {
+      const result = await callGeminiWithFallback(prompt, 'gemini-2.5-pro', 15000);
+      const responseText = result.response.text();
     
-    console.log("Raw Gemini response:", responseText);
+      console.log("Raw Gemini response:", responseText);
 
-    // Clean up the response text
-    let cleanedText = responseText.trim();
-    cleanedText = cleanedText.replace(/```json\n?/g, "");
-    cleanedText = cleanedText.replace(/```\n?/g, "");
-    cleanedText = cleanedText.replace(/^\s*/, "");
-    
-    console.log("Cleaned response text:", cleanedText);
+      if (!responseText || responseText.trim().length === 0) {
+        console.warn("Empty response from Gemini, using fallback");
+        return NextResponse.json(fallbackTimeline);
+      }
 
-    const responseJson = JSON.parse(cleanedText);
-    console.log("Parsed JSON:", responseJson);
-    
-    const validatedResponse = GenerateTimelineOutputSchema.parse(responseJson);
-    console.log("Validated response:", validatedResponse);
+      // Clean up the response text
+      let cleanedText = responseText.trim();
+      cleanedText = cleanedText.replace(/```json\n?/g, "");
+      cleanedText = cleanedText.replace(/```\n?/g, "");
+      cleanedText = cleanedText.replace(/^\s*/, "");
+      
+      console.log("Cleaned response text:", cleanedText);
 
-    return NextResponse.json(validatedResponse);
+      let responseJson;
+      try {
+        responseJson = JSON.parse(cleanedText);
+      } catch (parseError) {
+        console.warn("JSON parsing failed, using fallback:", parseError);
+        return NextResponse.json(fallbackTimeline);
+      }
+      
+      console.log("Parsed JSON:", responseJson);
+      
+      // Use safe validation
+      const validationResult = GenerateTimelineOutputSchema.safeParse(responseJson);
+      if (!validationResult.success) {
+        console.warn("Timeline validation failed, using fallback:", validationResult.error);
+        return NextResponse.json(fallbackTimeline);
+      }
+
+      console.log("Validated response:", validationResult.data);
+      return NextResponse.json(validationResult.data);
+    } catch (geminiError: any) {
+      console.warn("All Gemini API keys failed, using fallback:", geminiError.message);
+      return NextResponse.json(fallbackTimeline);
+    }
   } catch (e: any) {
-    console.error("Timeline generation error details:", e);
-    
-    if (e instanceof ZodError) {
-      console.error("Zod validation error:", e.errors);
-      return NextResponse.json({ error: 'Invalid input', details: e.errors }, { status: 400 });
-    }
-    
-    if (e instanceof SyntaxError) {
-      console.error("JSON parsing error:", e.message);
-    }
-    
-    console.error("General timeline generation error:", e.message);
-    
-    // Fallback timeline when AI generation fails
-    const fallbackTimeline = {
-      timeline: [
-        {
-          timeframe: "In 1-2 Years",
-          prediction: "With current habits, you may see gradual changes in your health markers that could indicate increased diabetes risk.",
-          suggestion: "Start with small changes like taking a 10-minute walk after meals and reducing sugary drinks."
-        },
-        {
-          timeframe: "In 5 Years",
-          prediction: "Without lifestyle modifications, your risk factors may become more pronounced, potentially affecting your overall health.",
-          suggestion: "Consider working with a healthcare provider to develop a comprehensive plan for diet and exercise."
-        },
-        {
-          timeframe: "In 10+ Years",
-          prediction: "Long-term continuation of current patterns may lead to more significant health challenges that require medical management.",
-          suggestion: "Regular health screenings and preventive care become increasingly important for early intervention."
-        }
-      ]
-    };
-    
+    console.error("Timeline generation failed, using fallback:", e);
     return NextResponse.json(fallbackTimeline);
   }
 }

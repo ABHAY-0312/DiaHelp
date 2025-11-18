@@ -1,14 +1,12 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { callOpenAIWithFallback } from '@/lib/openai-client';
 
 const GenerateHealthTipOutputSchema = z.object({
   tip: z.string().describe("A concise, actionable, and encouraging health tip related to diet, exercise, or general wellness, suitable for someone managing diabetes risk."),
 });
 export type HealthTip = z.infer<typeof GenerateHealthTipOutputSchema>;
-
-const OPENROUTER_API_KEY = process.env.OPENAI_API_KEY;
-const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
 export async function GET(req: NextRequest) {
   // Always return a fallback tip first to ensure we never fail
@@ -17,48 +15,56 @@ export async function GET(req: NextRequest) {
   };
 
   try {
-    const prompt = `Generate a single, interesting, actionable, and encouraging health tip (one sentence). Focus on nutrition, simple exercises, mindfulness, or hydration.
-Respond with only a valid JSON object conforming to the GenerateHealthTipOutput schema.
-Example: "Swapping white bread for whole-wheat is an easy way to boost your fiber intake!"`;
+    const prompt = `Generate a health tip and respond with ONLY this exact JSON format:
+{
+  "tip": "Your health tip here"
+}
 
-    const openrouterRes = await fetch(OPENROUTER_API_URL, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'openai/gpt-3.5-turbo',
-        messages: [
-          { role: 'system', content: 'You are an AI that provides short, encouraging health tips. You always respond with only a valid JSON object as requested.' },
+The tip should be one encouraging sentence about nutrition, exercise, or wellness. Example tip: "Take a 10-minute walk after each meal to help regulate your blood sugar naturally."`;
+
+    try {
+      const data = await callOpenAIWithFallback(
+        'openai/gpt-3.5-turbo',
+        [
+          { role: 'system', content: 'You must respond with only valid JSON in the exact format requested. No other text.' },
           { role: 'user', content: prompt },
         ],
-        response_format: { type: "json_object" },
-        temperature: 1.2,
-      }),
-    });
+        {
+          temperature: 0.8,
+          response_format: { type: "json_object" },
+          timeout: 10000
+        }
+      );
 
-    if (!openrouterRes.ok) {
+      const responseText = data.choices?.[0]?.message?.content;
+      console.log("OpenAI response text:", responseText);
+
+      if (!responseText) {
+        console.warn("No response text from OpenAI, using fallback");
+        return NextResponse.json(fallbackTip);
+      }
+
+      let responseJson;
+      try {
+        responseJson = JSON.parse(responseText);
+        console.log("Parsed response JSON:", responseJson);
+      } catch (parseError) {
+        console.warn("Failed to parse OpenAI response, using fallback:", parseError);
+        return NextResponse.json(fallbackTip);
+      }
+
+      // Use safe validation
+      const validationResult = GenerateHealthTipOutputSchema.safeParse(responseJson);
+      if (!validationResult.success) {
+        console.warn("Health tip validation failed, using fallback:", validationResult.error);
+        return NextResponse.json(fallbackTip);
+      }
+
+      return NextResponse.json(validationResult.data);
+    } catch (openaiError: any) {
+      console.warn("All OpenAI API keys failed, using fallback:", openaiError.message);
       return NextResponse.json(fallbackTip);
     }
-
-    const data = await openrouterRes.json();
-    const responseText = data.choices?.[0]?.message?.content;
-
-    if (!responseText) {
-      return NextResponse.json(fallbackTip);
-    }
-
-    const responseJson = JSON.parse(responseText);
-    
-    // Safe validation - return fallback if validation fails
-    const validationResult = GenerateHealthTipOutputSchema.safeParse(responseJson);
-    if (!validationResult.success) {
-      console.warn("Health tip validation failed, using fallback:", validationResult.error);
-      return NextResponse.json(fallbackTip);
-    }
-
-    return NextResponse.json(validationResult.data);
   } catch (e: any) {
     console.error("Health tip generation failed, using fallback:", e);
     return NextResponse.json(fallbackTip);

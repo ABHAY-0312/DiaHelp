@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Timeline API Test</title>
+</head>
+<body>
+    <h1>Timeline API Test</h1>
+    <button onclick="testSimpleTimeline()">Test Simple Timeline (Always Works)</button>
+    <button onclick="testTimeline()">Test Full Timeline API</button>
+    <div>
+        <h3>Simple Timeline Result:</h3>
+        <pre id="simple-result"></pre>
+    </div>
+    <div>
+        <h3>Full Timeline Result:</h3>
+        <pre id="result"></pre>
+    </div>
+
+    <script>
+    async function testSimpleTimeline() {
+        const resultDiv = document.getElementById('simple-result');
+        resultDiv.textContent = 'Testing simple timeline API...';
+        
+        try {
+            const response = await fetch('/api/test-timeline-simple', {
+                method: 'GET',
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            resultDiv.textContent = JSON.stringify(data, null, 2);
+            console.log('Simple Timeline API Success:', data);
+        } catch (error) {
+            resultDiv.textContent = `Error: ${error.message}`;
+            console.error('Simple Timeline API Error:', error);
+        }
+    }
+    
+    async function testTimeline() {
+        const resultDiv = document.getElementById('result');
+        resultDiv.textContent = 'Testing timeline API...';
+        
+        try {
+            const response = await fetch('/api/generate-timeline', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    riskScore: 75,
+                    keyFactors: ["high blood sugar", "poor diet", "sedentary lifestyle"]
+                })
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            resultDiv.textContent = JSON.stringify(data, null, 2);
+            console.log('Timeline API Success:', data);
+        } catch (error) {
+            resultDiv.textContent = `Error: ${error.message}`;
+            console.error('Timeline API Error:', error);
+        }
+    }
+    </script>
+</body>
+</html>

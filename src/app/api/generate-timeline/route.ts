@@ -30,25 +30,75 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const input = GenerateTimelineInputSchema.parse(body);
+    
+    console.log("Timeline input:", input);
 
-    const prompt = `Generate a potential future health timeline based on the user's data, assuming NO lifestyle changes. Create three events: 1-2 years, 5 years, and 10+ years.
-The predictions should be realistic but gentle, directly related to the key risk factors, and aim to motivate positive change.
-User's Risk Score: ${input.riskScore}
-User's Key Factors: ${input.keyFactors.join(', ')}
-For each event, provide a timeframe, a prediction, and a suggestion. Respond with only a valid JSON object conforming to the GenerateTimelineOutput schema.`;
+    const prompt = `You are a health prediction AI. Generate a health timeline based on the user's current data.
+
+User Data:
+- Risk Score: ${input.riskScore}/100
+- Key Risk Factors: ${input.keyFactors.join(', ')}
+
+Create exactly 3 timeline events for: "In 1-2 Years", "In 5 Years", and "In 10+ Years"
+
+You must respond with ONLY a valid JSON object in this exact format:
+{
+  "timeline": [
+    {
+      "timeframe": "In 1-2 Years",
+      "prediction": "Brief prediction of health changes if no lifestyle changes are made",
+      "suggestion": "One actionable suggestion to improve health"
+    },
+    {
+      "timeframe": "In 5 Years", 
+      "prediction": "Medium-term health prediction",
+      "suggestion": "One actionable suggestion"
+    },
+    {
+      "timeframe": "In 10+ Years",
+      "prediction": "Long-term health prediction", 
+      "suggestion": "One actionable suggestion"
+    }
+  ]
+}`;
+
+    console.log("Sending prompt to Gemini:", prompt);
 
     const result = await model.generateContent(prompt);
     const responseText = result.response.text();
-    const responseJson = JSON.parse(responseText.replace(/```json\n?/, "").replace(/```$/, ""));
+    
+    console.log("Raw Gemini response:", responseText);
+
+    // Clean up the response text
+    let cleanedText = responseText.trim();
+    cleanedText = cleanedText.replace(/```json\n?/g, "");
+    cleanedText = cleanedText.replace(/```\n?/g, "");
+    cleanedText = cleanedText.replace(/^\s*/, "");
+    
+    console.log("Cleaned response text:", cleanedText);
+
+    const responseJson = JSON.parse(cleanedText);
+    console.log("Parsed JSON:", responseJson);
+    
     const validatedResponse = GenerateTimelineOutputSchema.parse(responseJson);
+    console.log("Validated response:", validatedResponse);
 
     return NextResponse.json(validatedResponse);
   } catch (e: any) {
+    console.error("Timeline generation error details:", e);
+    
     if (e instanceof ZodError) {
+      console.error("Zod validation error:", e.errors);
       return NextResponse.json({ error: 'Invalid input', details: e.errors }, { status: 400 });
     }
-    console.error("Timeline generation failed.", e);
-    return NextResponse.json({ error: 'Internal Server Error', message: e.message || 'An unexpected error occurred.' }, { status: 500 });
+    
+    if (e instanceof SyntaxError) {
+      console.error("JSON parsing error:", e.message);
+      return NextResponse.json({ error: 'JSON parsing failed', message: e.message }, { status: 500 });
+    }
+    
+    console.error("General timeline generation error:", e.message);
+    return NextResponse.json({ error: 'Timeline generation failed', message: e.message || 'An unexpected error occurred.' }, { status: 500 });
   }
 }
 

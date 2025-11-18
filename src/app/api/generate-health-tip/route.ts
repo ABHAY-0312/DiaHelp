@@ -34,8 +34,7 @@ Example: "Swapping white bread for whole-wheat is an easy way to boost your fibe
     });
 
     if (!openrouterRes.ok) {
-      const error = await openrouterRes.json();
-      throw new Error(error.error?.message || 'OpenRouter API error');
+      throw new Error('OpenRouter API error');
     }
 
     const data = await openrouterRes.json();
@@ -51,7 +50,13 @@ Example: "Swapping white bread for whole-wheat is an easy way to boost your fibe
     return NextResponse.json(validatedResponse);
   } catch (e: any) {
     console.error("Health tip generation failed.", e);
-    return NextResponse.json({ error: 'Internal Server Error', message: e.message || 'An unexpected error occurred.' }, { status: 500 });
+    
+    // Always return a fallback health tip to prevent errors
+    const fallbackTip = {
+      tip: "Stay hydrated by drinking at least 8 glasses of water daily to support your metabolism and overall health."
+    };
+    
+    return NextResponse.json(fallbackTip);
   }
 }
 

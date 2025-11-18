@@ -11,6 +11,11 @@ const OPENROUTER_API_KEY = process.env.OPENAI_API_KEY;
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
 export async function GET(req: NextRequest) {
+  // Always return a fallback tip first to ensure we never fail
+  const fallbackTip = {
+    tip: "Stay hydrated by drinking at least 8 glasses of water daily to support your metabolism and overall health."
+  };
+
   try {
     const prompt = `Generate a single, interesting, actionable, and encouraging health tip (one sentence). Focus on nutrition, simple exercises, mindfulness, or hydration.
 Respond with only a valid JSON object conforming to the GenerateHealthTipOutput schema.
@@ -34,28 +39,28 @@ Example: "Swapping white bread for whole-wheat is an easy way to boost your fibe
     });
 
     if (!openrouterRes.ok) {
-      throw new Error('OpenRouter API error');
+      return NextResponse.json(fallbackTip);
     }
 
     const data = await openrouterRes.json();
     const responseText = data.choices?.[0]?.message?.content;
 
     if (!responseText) {
-      throw new Error('No response content from OpenRouter');
+      return NextResponse.json(fallbackTip);
     }
 
     const responseJson = JSON.parse(responseText);
-    const validatedResponse = GenerateHealthTipOutputSchema.parse(responseJson);
+    
+    // Safe validation - return fallback if validation fails
+    const validationResult = GenerateHealthTipOutputSchema.safeParse(responseJson);
+    if (!validationResult.success) {
+      console.warn("Health tip validation failed, using fallback:", validationResult.error);
+      return NextResponse.json(fallbackTip);
+    }
 
-    return NextResponse.json(validatedResponse);
+    return NextResponse.json(validationResult.data);
   } catch (e: any) {
-    console.error("Health tip generation failed.", e);
-    
-    // Always return a fallback health tip to prevent errors
-    const fallbackTip = {
-      tip: "Stay hydrated by drinking at least 8 glasses of water daily to support your metabolism and overall health."
-    };
-    
+    console.error("Health tip generation failed, using fallback:", e);
     return NextResponse.json(fallbackTip);
   }
 }

@@ -1,4 +1,3 @@
-
 import { NextRequest, NextResponse } from 'next/server';
 import { z, ZodError } from 'zod';
 import {
@@ -63,18 +62,21 @@ export async function POST(req: NextRequest) {
 
     const prompt = `Analyze the meal in the photo and respond with only a valid JSON object conforming to the AnalyzeMealOutput schema.
 Instructions:
-1.  1.  **Identify Food Items (Mandatory)**: You MUST identify each food item and populate the 'items' array. For each item, provide your best estimate for its name, calories, and carbs. Group identical items and set 'quantity'. If you are uncertain, make a reasonable estimate. Do NOT leave the 'items' array empty if food is present.
-2.  **Provide Feedback**: Give brief, constructive feedback relevant to diabetes risk management.
-3.  **Check for Cheat Meal**: Determine if the meal is a "cheat meal" (high sugar/fat/processed carbs).
-4.  **Generate Recovery Plan**: If it's a cheat meal, create a 'recoveryPlan' with a 'walkReminder', 'waterPrompt', and a healthy 'dinnerSuggestion'. Omit this field otherwise.
+1.  **Identify Food Items (Mandatory)**: You MUST identify each food item and populate the 'items' array. For each item, you MUST provide a numerical estimate for 'calories' and 'carbohydrates'. If you are uncertain, make a reasonable, non-zero estimate. Do NOT leave the 'items' array empty if food is present.
+2.  **Calculate Totals (Mandatory)**: You MUST calculate and populate 'totalCalories' and 'totalCarbohydrates' by summing the values from the 'items' array.
+3.  **Provide Feedback**: Give brief, constructive feedback relevant to diabetes risk management.
+4.  **Check for Cheat Meal**: Determine if the meal is a "cheat meal" (high sugar/fat/processed carbs).
+5.  **Generate Recovery Plan**: If it's a cheat meal, create a 'recoveryPlan'. Omit this field otherwise.
 If the image is not food, set 'isFood' to false and leave other fields empty.`;
 
     const result = await model.generateContent([prompt, imagePart]);
     const responseText = result.response.text();
     const responseJson = JSON.parse(responseText.replace(/```json\n?/, "").replace(/```$/, ""));
 
+    // Validate the AI's response against the schema before sending it to the client
+    const validatedResponse = AnalyzeMealOutputSchema.parse(responseJson);
 
-    return NextResponse.json(responseJson);
+    return NextResponse.json(validatedResponse);
   } catch (e: any) {
     if (e instanceof ZodError) {
       return NextResponse.json({ error: 'Invalid input', details: e.errors }, { status: 400 });

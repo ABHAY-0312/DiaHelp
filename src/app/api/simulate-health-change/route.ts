@@ -1,9 +1,5 @@
-
 import { NextRequest, NextResponse } from 'next/server';
 import { z, ZodError } from 'zod';
-import {
-  GoogleGenerativeAI,
-} from '@google/generative-ai';
 import { healthFormSchema } from '@/lib/types';
 
 export const SimulateHealthChangeInputSchema = z.object({
@@ -23,20 +19,15 @@ export const SimulateHealthChangeOutputSchema = z.object({
 });
 export type SimulateHealthChangeOutput = z.infer<typeof SimulateHealthChangeOutputSchema>;
 
-
-const API_KEY = process.env.GEMINI_API_KEY || '';
-const genAI = new GoogleGenerativeAI(API_KEY);
-
-const model = genAI.getGenerativeModel({
-  model: 'gemini-2.5-pro'
-});
+const OPENROUTER_API_KEY = process.env.OPENAI_API_KEY;
+const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const input = SimulateHealthChangeInputSchema.parse(body);
 
-    const prompt = `Predict the health outcomes of a user after one year based on hypothetical lifestyle changes.
+    const prompt = `Predict the health outcomes of a user after one year based on hypothetical lifestyle changes. You must respond with only a valid JSON object that conforms to the SimulateHealthChangeOutput schema.
 Current Health Profile:
 - Age: ${input.currentHealthData.age}, Gender: ${input.currentHealthData.gender}, BMI: ${input.currentHealthData.bmi}, Glucose: ${input.currentHealthData.fastingGlucose}, HbA1c: ${input.currentHealthData.hba1c}, Sleep: ${input.currentHealthData.sleepHours}, Activity: ${input.currentHealthData.physicalActivity}
 
@@ -49,13 +40,40 @@ Instructions:
 1.  **Analyze Impact**: Based on medical knowledge, analyze how these changes would affect key metrics (BMI, glucose, etc.) over one year.
 2.  **Project Risk Score**: Calculate a new estimated diabetes risk score based on the projected metrics.
 3.  **Write Narrative**: Create a compelling narrative explaining the projection. Start by acknowledging the positive changes, explain the "how" and "why" of the improvements, state the new risk score, and conclude with an encouraging message.
-Respond with only a valid JSON object conforming to the SimulateHealthChangeOutput schema.`;
+Do not include any markdown formatting or other text outside the JSON object.`;
 
-    const result = await model.generateContent(prompt);
-    const responseText = result.response.text();
-    const responseJson = JSON.parse(responseText.replace(/```json\n?/, "").replace(/```$/, ""));
+    const openrouterRes = await fetch(OPENROUTER_API_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'openai/gpt-4o',
+        messages: [
+          { role: 'system', content: 'You are a health simulation AI that predicts future health outcomes based on lifestyle changes. You always respond with only a valid JSON object as requested.' },
+          { role: 'user', content: prompt },
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0.7,
+      }),
+    });
 
+    if (!openrouterRes.ok) {
+      const error = await openrouterRes.json();
+      throw new Error(error.error?.message || 'OpenRouter API error');
+    }
+
+    const data = await openrouterRes.json();
+    const responseText = data.choices?.[0]?.message?.content;
+
+    if (!responseText) {
+      throw new Error('No response content from OpenRouter');
+    }
+
+    const responseJson = JSON.parse(responseText);
     const validatedResponse = SimulateHealthChangeOutputSchema.parse(responseJson);
+    
     return NextResponse.json(validatedResponse);
   } catch (e: any) {
     if (e instanceof ZodError) {

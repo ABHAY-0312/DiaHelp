@@ -1,4 +1,3 @@
-
 import { NextRequest, NextResponse } from 'next/server';
 import { z, ZodError } from 'zod';
 
@@ -34,6 +33,8 @@ User's Risk Score: ${input.riskScore}
 User's Key Factors: ${input.keyFactors.join(', ')}
 For each event, provide a timeframe, a prediction, and a suggestion. Respond with only a valid JSON object conforming to the GenerateTimelineOutput schema.`;
 
+    console.log("Received input:", input);
+
     const openrouterRes = await fetch(OPENROUTER_API_URL, {
       method: 'POST',
       headers: {
@@ -51,19 +52,26 @@ For each event, provide a timeframe, a prediction, and a suggestion. Respond wit
       }),
     });
 
+    console.log("OpenRouter response status:", openrouterRes.status);
     if (!openrouterRes.ok) {
       const error = await openrouterRes.json();
+      console.error("OpenRouter API error:", error);
       throw new Error(error.error?.message || 'OpenRouter API error');
     }
 
     const data = await openrouterRes.json();
+    console.log("Raw response from OpenRouter:", data);
+
     const responseText = data.choices?.[0]?.message?.content;
 
     if (!responseText) {
+      console.error("No response content from OpenRouter");
       throw new Error('No response content from OpenRouter');
     }
 
     const responseJson = JSON.parse(responseText);
+    console.log("Parsed response JSON:", responseJson);
+
     const validatedResponse = GenerateTimelineOutputSchema.parse(responseJson);
 
     return NextResponse.json(validatedResponse);

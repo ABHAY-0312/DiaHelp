@@ -1,4 +1,3 @@
-
 import { NextRequest, NextResponse } from 'next/server';
 import { z, ZodError } from 'zod';
 
@@ -15,6 +14,8 @@ async function fetchAndValidateHealthTip(retryCount = 0): Promise<HealthTip> {
 
 Example of a perfect response:
 { "tip": "Drinking a glass of water before a meal can help you feel fuller and eat less." }`;
+
+  console.log("Sending prompt to OpenRouter:", prompt);
 
   const openrouterRes = await fetch(OPENROUTER_API_URL, {
     method: 'POST',
@@ -33,21 +34,29 @@ Example of a perfect response:
     }),
   });
 
+  console.log("OpenRouter response status:", openrouterRes.status);
+
   if (!openrouterRes.ok) {
     const error = await openrouterRes.json();
+    console.error("OpenRouter API error:", error);
     throw new Error(error.error?.message || 'OpenRouter API error');
   }
 
   const data = await openrouterRes.json();
+  console.log("Raw response from OpenRouter:", data);
+
   const responseText = data.choices?.[0]?.message?.content;
 
   try {
     if (!responseText) {
+      console.error("No response content from OpenRouter");
       throw new Error('No response content from OpenRouter');
     }
     const responseJson = JSON.parse(responseText);
+    console.log("Parsed response JSON:", responseJson);
     return GenerateHealthTipOutputSchema.parse(responseJson);
   } catch (error) {
+    console.error("Validation or parsing error:", error);
     if (retryCount < 2) {
       console.warn(`Health tip validation failed, retrying... (Attempt ${retryCount + 1})`, error);
       return fetchAndValidateHealthTip(retryCount + 1);

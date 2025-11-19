@@ -34,12 +34,11 @@ export async function callGeminiWithFallback(
   modelName: string = 'gemini-2.5-pro',
   timeout: number = 10000
 ): Promise<any> {
-  const usedKeys = new Set<string>();
   let attemptCount = 0;
+  const maxAttempts = GEMINI_API_KEYS.length;
   
-  for (const apiKey of GEMINI_API_KEYS) {
-    if (!apiKey || usedKeys.has(apiKey)) continue;
-    usedKeys.add(apiKey);
+  for (let i = 0; i < maxAttempts; i++) {
+    const apiKey = getNextGeminiKey(); // Use round-robin selection
     
     try {
       console.log(`Trying Gemini API key: ${apiKey.substring(0, 10)}...`);
@@ -65,7 +64,7 @@ export async function callGeminiWithFallback(
       attemptCount++;
       
       // Add delay between retries (exponential backoff)
-      if (attemptCount < GEMINI_API_KEYS.length) {
+      if (attemptCount < maxAttempts) {
         const delay = Math.min(1000 * attemptCount, 3000); // 1s, 2s, 3s max
         console.log(`Waiting ${delay}ms before trying next key...`);
         await new Promise(resolve => setTimeout(resolve, delay));

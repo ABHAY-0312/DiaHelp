@@ -104,7 +104,7 @@ Instructions:
 
     // Add timeout for Gemini API
     try {
-      const result = await callGeminiWithFallback(prompt, 'gemini-2.5-pro', 15000);
+      const result = await callGeminiWithFallback(prompt, 'gemini-2.5-flash', 15000);
       const responseText = result.response.text();
       
       if (!responseText || responseText.trim().length === 0) {

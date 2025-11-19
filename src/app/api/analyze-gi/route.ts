@@ -36,7 +36,7 @@ Instructions:
 If the description is not food-related, provide a low GI and a generic explanation. Do not include any markdown formatting or other text outside the JSON object.`;
 
     try {
-      const result = await callGeminiWithFallback(prompt, 'gemini-2.5-pro', 10000);
+      const result = await callGeminiWithFallback(prompt, 'gemini-2.5-flash', 10000);
       const responseText = result.response.text();
       
       if (!responseText || responseText.trim().length === 0) {

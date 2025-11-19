@@ -80,7 +80,7 @@ You must respond with ONLY a valid JSON object in this exact format:
     console.log("Sending prompt to Gemini:", prompt);
 
     try {
-      const result = await callGeminiWithFallback(prompt, 'gemini-2.5-pro', 15000);
+      const result = await callGeminiWithFallback(prompt, 'gemini-2.5-flash', 15000);
       const responseText = result.response.text();
     
       console.log("Raw Gemini response:", responseText);

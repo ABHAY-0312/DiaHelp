@@ -136,14 +136,22 @@ The plan should be suitable for managing diabetes risk.`;
 
       console.log("OpenAI exercise plan response:", response);
 
-      if (!response || !response.content) {
+      // Fix: Access the correct response format
+      const responseContent = response?.choices?.[0]?.message?.content;
+      
+      if (!responseContent || responseContent.trim().length === 0) {
         console.warn("No response content from OpenAI, using fallback");
         return NextResponse.json(fallbackPlan);
       }
 
       let responseJson;
       try {
-        responseJson = JSON.parse(response.content);
+        // Clean up the response text
+        let cleanedText = responseContent.trim();
+        cleanedText = cleanedText.replace(/```json\n?/g, "");
+        cleanedText = cleanedText.replace(/```\n?/g, "");
+        
+        responseJson = JSON.parse(cleanedText);
         console.log("Parsed exercise plan JSON:", responseJson);
       } catch (parseError) {
         console.warn("Failed to parse exercise plan response, using fallback:", parseError);

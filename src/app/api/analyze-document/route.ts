@@ -24,12 +24,31 @@ const ExtractedMedicationSchema = z.object({
     frequency: z.string().describe('How often the medication should be taken (e.g., "Once daily").'),
 })
 
+const HealthConditionSchema = z.object({
+  condition: z.string().describe('Detected health condition or risk factor'),
+  severity: z.enum(['Low', 'Moderate', 'High', 'Critical']).describe('Severity level of the condition'),
+  description: z.string().describe('Detailed explanation of the condition'),
+  relatedTests: z.array(z.string()).describe('Test names that support this diagnosis')
+});
+
+const RecommendationSchema = z.object({
+  category: z.enum(['Diet', 'Exercise', 'Medication', 'Lifestyle', 'Follow-up']).describe('Type of recommendation'),
+  action: z.string().describe('Specific recommended action'),
+  priority: z.enum(['Low', 'Medium', 'High', 'Urgent']).describe('Priority level'),
+  timeframe: z.string().describe('When to implement this recommendation')
+});
+
 const AnalyzeDocumentOutputSchema = z.object({
   documentType: z.enum(['lab_result', 'prescription', 'other', 'not_a_document']).describe('The classified type of the document.'),
   summary: z.string().describe("A brief, one-sentence summary of the document's main content."),
   interpretation: z.string().optional().describe("An interpretation of the extracted results, highlighting any values that are outside of their reference ranges and what they might indicate."),
   extractedFields: z.array(ExtractedFieldSchema).describe('A list of key data fields extracted from the document.'),
   extractedMedications: z.array(ExtractedMedicationSchema).describe('A list of medications extracted from the document, if any.'),
+  healthConditions: z.array(HealthConditionSchema).describe('Detected health conditions based on test results'),
+  overallRiskLevel: z.enum(['Low', 'Moderate', 'High', 'Critical']).describe('Overall health risk assessment'),
+  recommendations: z.array(RecommendationSchema).describe('Actionable health recommendations based on results'),
+  warningFlags: z.array(z.string()).describe('Critical values or conditions requiring immediate attention'),
+  finalInterpretation: z.string().describe('Comprehensive final interpretation summarizing overall health status, key concerns, immediate actions needed, and long-term health outlook based on all test results.')
 });
 export type AnalyzeDocumentOutput = z.infer<typeof AnalyzeDocumentOutputSchema>;
 
@@ -41,7 +60,19 @@ export async function POST(req: NextRequest) {
       summary: "Document analysis is temporarily unavailable due to high server demand.",
       interpretation: "We're unable to analyze your document image right now. Please try again later or consult with a healthcare professional for manual review.",
       extractedFields: [],
-      extractedMedications: []
+      extractedMedications: [],
+      healthConditions: [],
+      overallRiskLevel: "Moderate" as const,
+      recommendations: [
+        {
+          category: "Follow-up" as const,
+          action: "Please try uploading your document again or consult with a healthcare professional for manual review",
+          priority: "Medium" as const,
+          timeframe: "As soon as possible"
+        }
+      ],
+      warningFlags: ["Analysis temporarily unavailable"],
+      finalInterpretation: "Document analysis is currently unavailable due to high server demand. Please try again shortly or consult with your healthcare provider for a manual review of your results. If you have any urgent health concerns, contact your doctor immediately."
     };
   };
 
@@ -61,16 +92,17 @@ export async function POST(req: NextRequest) {
       },
     };
 
-    const prompt = `Analyze the provided medical document image and respond with only a valid JSON object in this exact format:
+    const prompt = `You are a medical AI assistant analyzing blood test reports and lab results. Analyze the provided medical document image and respond with only a valid JSON object in this exact format:
+
 {
   "documentType": "lab_result" | "prescription" | "other" | "not_a_document",
   "summary": "One-sentence summary of the document content",
-  "interpretation": "Analysis of results highlighting values outside reference ranges",
+  "interpretation": "Detailed analysis of results highlighting abnormal values and their clinical significance",
   "extractedFields": [
     {
       "label": "Test Name",
-      "value": "Test Value",
-      "referenceRange": "Normal Range (optional)"
+      "value": "Test Value", 
+      "referenceRange": "Normal Range"
     }
   ],
   "extractedMedications": [
@@ -79,19 +111,52 @@ export async function POST(req: NextRequest) {
       "dosage": "Dosage Amount",
       "frequency": "How often taken"
     }
-  ]
+  ],
+  "healthConditions": [
+    {
+      "condition": "Detected condition name",
+      "severity": "Low" | "Moderate" | "High" | "Critical",
+      "description": "Detailed explanation of the condition and its implications",
+      "relatedTests": ["Test names supporting this diagnosis"]
+    }
+  ],
+  "overallRiskLevel": "Low" | "Moderate" | "High" | "Critical",
+  "recommendations": [
+    {
+      "category": "Diet" | "Exercise" | "Medication" | "Lifestyle" | "Follow-up",
+      "action": "Specific recommended action",
+      "priority": "Low" | "Medium" | "High" | "Urgent",
+      "timeframe": "When to implement"
+    }
+  ],
+  "warningFlags": ["Critical values requiring immediate attention"],
+  "finalInterpretation": "Comprehensive final interpretation providing overall health status summary, key concerns, immediate actions needed, and long-term outlook"
 }
 
-Instructions:
-1. Classify document type accurately
-2. Extract key health data (HbA1c, Glucose, Cholesterol, etc.)
-3. Extract medication information if present
-4. Provide clear interpretation of results
-5. Use empty arrays for missing data`;
+CRITICAL ANALYSIS INSTRUCTIONS:
+1. Extract ALL visible test values with their reference ranges
+2. Identify health conditions based on abnormal values:
+   - Diabetes: HbA1c ≥6.5%, Fasting Glucose ≥126 mg/dL
+   - Pre-diabetes: HbA1c 5.7-6.4%, Fasting Glucose 100-125 mg/dL
+   - High Cholesterol: Total >240 mg/dL, LDL >160 mg/dL
+   - Kidney Issues: Creatinine elevated, GFR <60
+   - Liver Problems: ALT/AST elevated
+   - Anemia: Hemoglobin <12 g/dL (women), <13.5 g/dL (men)
+   - Thyroid Disorders: TSH outside 0.4-4.0 mIU/L
+3. Assess severity based on how far values deviate from normal ranges
+4. Provide specific, actionable recommendations
+5. Flag critical values requiring immediate medical attention
+6. Consider interconnections between different test results
+7. FINAL INTERPRETATION must be a comprehensive 3-4 sentence summary that:
+   - States overall health status (normal, concerning, critical)
+   - Highlights the most important findings
+   - Mentions immediate actions if any are needed
+   - Provides reassurance or urgency as appropriate
+8. Use empty arrays only if truly no data is available`;
 
     // Add timeout for Gemini API
     try {
-      const result = await callGeminiWithFallback([prompt, imagePart], 'gemini-2.5-pro', 15000);
+      const result = await callGeminiWithFallback([prompt, imagePart], 'gemini-2.5-flash-lite', 15000);
       const responseText = result.response.text();
       
       if (!responseText || responseText.trim().length === 0) {

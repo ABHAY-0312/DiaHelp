@@ -10,14 +10,19 @@ const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 // Round-robin index for load distribution
 let currentOpenAIKeyIndex = 0;
 
-// Get next API key in rotation
+// Get next API key in rotation with better distribution
 function getNextOpenAIKey(): string {
   if (OPENAI_API_KEYS.length === 0) {
     throw new Error('No OpenAI API keys configured');
   }
   
-  const key = OPENAI_API_KEYS[currentOpenAIKeyIndex];
-  currentOpenAIKeyIndex = (currentOpenAIKeyIndex + 1) % OPENAI_API_KEYS.length;
+  // Use timestamp + random for better distribution in serverless environments
+  const timeBasedIndex = Math.floor(Date.now() / 1000) % OPENAI_API_KEYS.length;
+  const randomOffset = Math.floor(Math.random() * OPENAI_API_KEYS.length);
+  const distributedIndex = (timeBasedIndex + randomOffset) % OPENAI_API_KEYS.length;
+  
+  const key = OPENAI_API_KEYS[distributedIndex];
+  console.log(`🔄 Selected OpenAI key ${distributedIndex + 1}/${OPENAI_API_KEYS.length}: ${key?.substring(0, 15)}...`);
   return key!;
 }
 
@@ -32,14 +37,19 @@ export async function callOpenAIWithFallback(
   } = {}
 ): Promise<any> {
   const { temperature = 0.7, response_format, timeout = 10000 } = options;
-  const usedKeys = new Set<string>();
   
-  for (const apiKey of OPENAI_API_KEYS) {
-    if (!apiKey || usedKeys.has(apiKey)) continue;
-    usedKeys.add(apiKey);
+  // Create randomized key order to avoid always starting with the same key
+  const shuffledKeys = [...OPENAI_API_KEYS];
+  const startIndex = Math.floor(Math.random() * shuffledKeys.length);
+  const keyOrder = [...shuffledKeys.slice(startIndex), ...shuffledKeys.slice(0, startIndex)];
+  
+  for (let i = 0; i < keyOrder.length; i++) {
+    const apiKey = keyOrder[i];
+    if (!apiKey) continue;
     
     try {
-      console.log(`Trying OpenAI API key: ${apiKey.substring(0, 15)}...`);
+      const keyIndex = OPENAI_API_KEYS.indexOf(apiKey) + 1;
+      console.log(`🚀 Attempt ${i + 1}/${keyOrder.length} - Using OpenAI key ${keyIndex}: ${apiKey.substring(0, 15)}...`);
       
       const requestBody: any = {
         model,
@@ -73,11 +83,26 @@ export async function callOpenAIWithFallback(
       }
       
       const data = await response.json();
-      console.log(`✅ OpenAI API success with key: ${apiKey.substring(0, 15)}...`);
+      
+      if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+        throw new Error('Invalid response format from OpenAI API');
+      }
+      
+      const successKeyIndex = OPENAI_API_KEYS.indexOf(apiKey) + 1;
+      console.log(`✅ OpenAI API SUCCESS with key ${successKeyIndex}: ${apiKey.substring(0, 15)}...`);
+      console.log(`Response preview: ${data.choices[0].message.content?.substring(0, 100)}...`);
       return data;
       
     } catch (error: any) {
-      console.warn(`❌ OpenAI API key ${apiKey.substring(0, 15)}... failed:`, error.message);
+      const errorKeyIndex = OPENAI_API_KEYS.indexOf(apiKey) + 1;
+      console.warn(`❌ OpenAI key ${errorKeyIndex} ${apiKey.substring(0, 15)}... FAILED:`, error.message);
+      
+      // Add delay between retries
+      if (i < keyOrder.length - 1) {
+        const delay = Math.min(500 * (i + 1), 2000);
+        console.log(`⏳ Waiting ${delay}ms before trying next OpenAI key...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
       
       // Check if we should try the next key
       if (
@@ -107,6 +132,12 @@ export function getOpenAIKeyStats() {
   return {
     totalKeys: OPENAI_API_KEYS.length,
     currentKeyIndex: currentOpenAIKeyIndex,
-    keys: OPENAI_API_KEYS.map(key => key?.substring(0, 15) + '...')
+    keys: OPENAI_API_KEYS.map((key, index) => `Key${index + 1}: ${key?.substring(0, 15)}...`),
+    hasAllKeys: OPENAI_API_KEYS.length === 3,
+    keyStatuses: {
+      key1: !!process.env.OPENAI_API_KEY,
+      key2: !!process.env.OPENAI_API_KEY_2,
+      key3: !!process.env.OPENAI_API_KEY_3,
+    }
   };
 }

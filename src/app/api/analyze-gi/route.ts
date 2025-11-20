@@ -27,13 +27,22 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { mealDescription } = AnalyzeGIInputSchema.parse(body);
 
-    const prompt = `As a nutritional expert on Glycemic Index (GI), analyze the user's meal and respond with only a valid JSON object conforming to the AnalyzeGIOutput schema.
-Meal Description: "${mealDescription}".
-Instructions:
-1.  **Estimate GI**: Estimate a single GI value for the meal (1-100).
-2.  **Classify**: Classify as 'Low' (1-55), 'Medium' (56-69), or 'High' (70+).
-3.  **Explain**: Provide a 1-2 sentence explanation of what this GI level means for blood sugar.
-If the description is not food-related, provide a low GI and a generic explanation. Do not include any markdown formatting or other text outside the JSON object.`;
+    const prompt = `Analyze this meal and respond with ONLY a valid JSON object in this exact format:
+
+{
+  "estimatedGI": 65,
+  "classification": "Medium",
+  "explanation": "This meal has a medium GI and will cause a moderate rise in blood sugar levels."
+}
+
+Meal to analyze: "${mealDescription}"
+
+Rules:
+- estimatedGI: Must be a NUMBER between 1-100
+- classification: Must be exactly "Low", "Medium", or "High"
+- explanation: 1-2 sentences about blood sugar impact
+- GI ranges: Low (1-55), Medium (56-69), High (70+)
+- Return ONLY the JSON object, no other text`;
 
     try {
       const result = await callGeminiWithFallback(prompt, 'gemini-2.5-flash', 10000);
@@ -48,19 +57,41 @@ If the description is not food-related, provide a low GI and a generic explanati
       let cleanedText = responseText.trim();
       cleanedText = cleanedText.replace(/```json\n?/g, "");
       cleanedText = cleanedText.replace(/```\n?/g, "");
+      cleanedText = cleanedText.replace(/^[^{]*/, ""); // Remove text before first {
+      cleanedText = cleanedText.replace(/[^}]*$/, ""); // Remove text after last }
       
       let responseJson;
       try {
         responseJson = JSON.parse(cleanedText);
       } catch (parseError) {
         console.warn("Failed to parse Gemini response, using fallback:", parseError);
+        console.warn("Raw response:", responseText);
         return NextResponse.json(fallbackAnalysis);
       }
 
+      // Ensure all required fields exist with defaults
+      const processedResponse = {
+        estimatedGI: responseJson.estimatedGI || responseJson.gi || responseJson.glycemicIndex || 50,
+        classification: responseJson.classification || "Medium",
+        explanation: responseJson.explanation || responseJson.description || "GI analysis completed with default values."
+      };
+
+      // Convert estimatedGI to number if it's a string
+      if (typeof processedResponse.estimatedGI === 'string') {
+        processedResponse.estimatedGI = parseInt(processedResponse.estimatedGI) || 50;
+      }
+
+      // Validate classification
+      if (!['Low', 'Medium', 'High'].includes(processedResponse.classification)) {
+        processedResponse.classification = processedResponse.estimatedGI <= 55 ? 'Low' : 
+                                         processedResponse.estimatedGI <= 69 ? 'Medium' : 'High';
+      }
+
       // Use safe validation
-      const validationResult = AnalyzeGIOutputSchema.safeParse(responseJson);
+      const validationResult = AnalyzeGIOutputSchema.safeParse(processedResponse);
       if (!validationResult.success) {
         console.warn("GI analysis validation failed, using fallback:", validationResult.error);
+        console.warn("Processed response:", processedResponse);
         return NextResponse.json(fallbackAnalysis);
       }
 

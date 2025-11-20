@@ -559,9 +559,9 @@ export function RiskAnalysis({ user, result, isLoading }: RiskAnalysisProps) {
                 </div>
             </div>
 
-            {/* 8. Disclaimer */}
-            <div className="text-xs text-muted-foreground text-center pt-4 border-t">
-                <p><strong>Disclaimer:</strong> This is a simulated prediction for educational and motivational purposes only and is not a real medical diagnosis. The risk score is an estimate based on a statistical model and does not replace a professional medical evaluation. Please consult with a qualified healthcare provider to discuss your results and for any medical advice.</p>
+            {/* 8. Motivational Message */}
+            <div className="text-sm text-center pt-4 border-t border-green-200 bg-gradient-to-r from-green-50 to-blue-50 rounded-lg p-4 mt-4">
+                <p className="text-green-700 font-medium italic">💚 Your health is your greatest wealth—so protect it with intention, make small healthy choices each day, and invest in yourself now for a stronger tomorrow.</p>
             </div>
           </div>
       </div>

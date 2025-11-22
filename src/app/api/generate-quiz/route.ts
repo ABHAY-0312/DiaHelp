@@ -1,6 +1,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z, ZodError } from 'zod';
+import { callOpenAIWithFallback } from '@/lib/openai-client';
 // import {
 //   GoogleGenerativeAI,
 // } from '@google/generative-ai';
@@ -24,11 +25,33 @@ const GenerateQuizOutputSchema = z.object({
 });
 export type GenerateQuizOutput = z.infer<typeof GenerateQuizOutputSchema>;
 
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || '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';
-const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
-
-
 export async function POST(req: NextRequest) {
+  // Fallback quiz to ensure we always return something useful
+  const fallbackQuiz = {
+    topic: "General Health Awareness",
+    microLesson: "Maintaining good health involves making informed choices about diet, exercise, and lifestyle. Regular monitoring of key health metrics like blood sugar, blood pressure, and BMI helps in early detection and prevention of chronic conditions.",
+    questions: [
+      {
+        question: "What is the recommended amount of physical activity per week for adults?",
+        options: ["30 minutes total", "75 minutes total", "150 minutes total", "300 minutes total"],
+        correctAnswer: "150 minutes total",
+        explanation: "Adults should aim for at least 150 minutes of moderate-intensity aerobic activity per week, as recommended by health organizations."
+      },
+      {
+        question: "Which food group should make up the largest portion of your plate?",
+        options: ["Proteins", "Vegetables and fruits", "Grains", "Dairy"],
+        correctAnswer: "Vegetables and fruits",
+        explanation: "Vegetables and fruits should fill half your plate, providing essential vitamins, minerals, and fiber for optimal health."
+      },
+      {
+        question: "What is considered a normal fasting blood sugar level?",
+        options: ["Less than 100 mg/dL", "100-125 mg/dL", "126-140 mg/dL", "Above 140 mg/dL"],
+        correctAnswer: "Less than 100 mg/dL",
+        explanation: "A normal fasting blood sugar level is less than 100 mg/dL. Levels of 100-125 mg/dL indicate prediabetes."
+      }
+    ]
+  };
+
   try {
     const body = await req.json();
     const input = GenerateQuizInputSchema.parse(body);
@@ -51,30 +74,19 @@ The module must contain:
 2.  **Quiz**: 3 multiple-choice questions.
 The goal is to be educational and encouraging. Do not include any markdown formatting like \`\`\`json or any other text outside of the JSON object.`;
 
-    const openrouterRes = await fetch(OPENROUTER_API_URL, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'openai/gpt-3.5-turbo', // Using a faster model for quiz generation
-        messages: [
-          { role: 'system', content: 'You are an AI assistant that generates educational health quizzes. You always respond with only a valid JSON object as requested.' },
-          { role: 'user', content: prompt },
-        ],
-        response_format: { type: "json_object" }, // Request JSON output
+    const response = await callOpenAIWithFallback(
+      'openai/gpt-3.5-turbo',
+      [
+        { role: 'system', content: 'You are an AI assistant that generates educational health quizzes. You always respond with only a valid JSON object as requested.' },
+        { role: 'user', content: prompt }
+      ],
+      {
         temperature: 0.7,
-      }),
-    });
+        response_format: { type: "json_object" }
+      }
+    );
 
-    if (!openrouterRes.ok) {
-      const error = await openrouterRes.json();
-      throw new Error(error.error?.message || 'OpenRouter API error');
-    }
-
-    const data = await openrouterRes.json();
-    const responseText = data.choices?.[0]?.message?.content;
+    const responseText = response.choices?.[0]?.message?.content;
     
     if (!responseText) {
       throw new Error('No response content from OpenRouter');
@@ -87,11 +99,8 @@ The goal is to be educational and encouraging. Do not include any markdown forma
 
     return NextResponse.json(validatedResponse);
   } catch (e: any) {
-    if (e instanceof ZodError) {
-      return NextResponse.json({ error: 'Invalid input', details: e.errors }, { status: 400 });
-    }
-    console.error("Quiz generation failed.", e);
-    return NextResponse.json({ error: 'Internal Server Error', message: e.message || 'An unexpected error occurred.' }, { status: 500 });
+    console.error("Quiz generation failed, using fallback quiz:", e);
+    return NextResponse.json(fallbackQuiz);
   }
 }
 

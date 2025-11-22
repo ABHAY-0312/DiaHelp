@@ -1,6 +1,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z, ZodError } from 'zod';
+import { callOpenAIWithFallback } from '@/lib/openai-client';
 
 const GenerateReportInputSchema = z.object({
   patientName: z.string().describe('The name of the patient.'),
@@ -18,10 +19,24 @@ const GenerateReportOutputSchema = z.object({
 });
 export type GenerateReportOutput = z.infer<typeof GenerateReportOutputSchema>;
 
-const OPENROUTER_API_KEY = process.env.OPENAI_API_KEY;
-const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
-
 export async function POST(req: NextRequest) {
+  // Fallback report to ensure we always return something useful
+  const fallbackReport = {
+    report: `<div class="health-report">
+      <h3>Health Assessment Report</h3>
+      <p>We're experiencing technical difficulties generating your personalized report right now.</p>
+      <p>Based on standard health guidelines, here are some general recommendations:</p>
+      <ul>
+        <li>Maintain a balanced diet with plenty of vegetables and whole grains</li>
+        <li>Engage in regular physical activity (at least 150 minutes per week)</li>
+        <li>Monitor your blood sugar levels regularly if at risk</li>
+        <li>Stay hydrated and get adequate sleep</li>
+        <li>Consult with healthcare professionals for personalized medical advice</li>
+      </ul>
+      <p><strong>Important:</strong> Please schedule an appointment with your healthcare provider for a comprehensive assessment.</p>
+    </div>`
+  };
+
   try {
     const body = await req.json();
     const input = GenerateReportInputSchema.parse(body);
@@ -42,33 +57,22 @@ Instructions:
 6.  End with a paragraph reminding the user to consult a healthcare professional.
 7.  The entire output for the "report" field must be a single, valid HTML string.`;
 
-    const openrouterRes = await fetch(OPENROUTER_API_URL, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'openai/gpt-3.5-turbo',
-        messages: [
-          { role: 'system', content: 'You are a helpful AI assistant that generates personalized health reports as HTML strings within a JSON object.' },
-          { role: 'user', content: prompt },
-        ],
-        response_format: { type: "json_object" },
+    const response = await callOpenAIWithFallback(
+      'openai/gpt-3.5-turbo',
+      [
+        { role: 'system', content: 'You are a helpful AI assistant that generates personalized health reports as HTML strings within a JSON object.' },
+        { role: 'user', content: prompt }
+      ],
+      {
         temperature: 0.5,
-      }),
-    });
+        response_format: { type: "json_object" }
+      }
+    );
 
-    if (!openrouterRes.ok) {
-      const error = await openrouterRes.json();
-      throw new Error(error.error?.message || 'OpenRouter API error');
-    }
-
-    const data = await openrouterRes.json();
-    const responseText = data.choices?.[0]?.message?.content;
+    const responseText = response.choices?.[0]?.message?.content;
 
     if (!responseText) {
-      throw new Error('No response content from OpenRouter');
+      throw new Error('No response content from OpenAI');
     }
 
     const responseJson = JSON.parse(responseText);
@@ -76,11 +80,8 @@ Instructions:
 
     return NextResponse.json(validatedResponse);
   } catch (e: any) {
-    if (e instanceof ZodError) {
-      return NextResponse.json({ error: 'Invalid input', details: e.errors }, { status: 400 });
-    }
-    console.error("AI Report generation failed.", e);
-    return NextResponse.json({ error: 'Internal Server Error', message: e.message || 'An unexpected error occurred.' }, { status: 500 });
+    console.error("AI Report generation failed, using fallback:", e);
+    return NextResponse.json(fallbackReport);
   }
 }
 

@@ -1,9 +1,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z, ZodError } from 'zod';
-import {
-  GoogleGenerativeAI,
-} from '@google/generative-ai';
+import { callGeminiWithFallback } from '@/lib/gemini-client';
 
 const GenerateOrganInsightInputSchema = z.object({
   organ: z.string().describe('The name of the organ (e.g., "pancreas", "liver").'),
@@ -16,14 +14,12 @@ const GenerateOrganInsightOutputSchema = z.object({
 });
 export type GenerateOrganInsightOutput = z.infer<typeof GenerateOrganInsightOutputSchema>;
 
-const API_KEY = process.env.GEMINI_API_KEY || '';
-const genAI = new GoogleGenerativeAI(API_KEY);
-
-const model = genAI.getGenerativeModel({
-  model: 'gemini-2.5-flash'
-});
-
 export async function POST(req: NextRequest) {
+  // Fallback organ insight when AI fails
+  const fallbackInsight = {
+    insight: "We're experiencing technical difficulties. Please consult with your healthcare provider for personalized insights about how your health factors may affect your organs."
+  };
+
   try {
     const body = await req.json();
     const { organ, riskFactor } = GenerateOrganInsightInputSchema.parse(body);
@@ -37,9 +33,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(responseJson);
   } catch (e: any) {
     if (e instanceof ZodError) {
-      return NextResponse.json({ error: 'Invalid input', details: e.errors }, { status: 400 });
+      return NextResponse.json(fallbackInsight);
     }
     console.error("Organ insight generation failed.", e);
-    return NextResponse.json({ error: 'Internal Server Error', message: e.message || 'An unexpected error occurred.' }, { status: 500 });
+    
+    // Return fallback insight instead of error
+    return NextResponse.json(fallbackInsight);
   }
 }

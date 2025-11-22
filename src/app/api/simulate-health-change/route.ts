@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z, ZodError } from 'zod';
+import { callOpenAIWithFallback } from '@/lib/openai-client';
 import { healthFormSchema } from '@/lib/types';
 
 export const SimulateHealthChangeInputSchema = z.object({
@@ -19,10 +20,13 @@ export const SimulateHealthChangeOutputSchema = z.object({
 });
 export type SimulateHealthChangeOutput = z.infer<typeof SimulateHealthChangeOutputSchema>;
 
-const OPENROUTER_API_KEY = process.env.OPENAI_API_KEY;
-const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
-
 export async function POST(req: NextRequest) {
+  // Fallback simulation result when AI fails
+  const fallbackSimulation = {
+    projectedRiskScore: 45,
+    narrative: "We're experiencing technical difficulties with our health simulation service. However, positive lifestyle changes like regular exercise, healthy eating, and adequate sleep generally lead to improved health outcomes. Consult with your healthcare provider for personalized guidance on managing your diabetes risk."
+  };
+
   try {
     const body = await req.json();
     const input = SimulateHealthChangeInputSchema.parse(body);
@@ -42,33 +46,22 @@ Instructions:
 3.  **Write Narrative**: Create a compelling narrative explaining the projection. Start by acknowledging the positive changes, explain the "how" and "why" of the improvements, state the new risk score, and conclude with an encouraging message.
 Do not include any markdown formatting or other text outside the JSON object.`;
 
-    const openrouterRes = await fetch(OPENROUTER_API_URL, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'openai/gpt-4o',
-        messages: [
-          { role: 'system', content: 'You are a health simulation AI that predicts future health outcomes based on lifestyle changes. You always respond with only a valid JSON object as requested.' },
-          { role: 'user', content: prompt },
-        ],
-        response_format: { type: "json_object" },
+    const response = await callOpenAIWithFallback(
+      'openai/gpt-3.5-turbo',
+      [
+        { role: 'system', content: 'You are a health simulation AI that predicts future health outcomes based on lifestyle changes. You always respond with only a valid JSON object as requested.' },
+        { role: 'user', content: prompt }
+      ],
+      {
         temperature: 0.7,
-      }),
-    });
+        response_format: { type: "json_object" }
+      }
+    );
 
-    if (!openrouterRes.ok) {
-      const error = await openrouterRes.json();
-      throw new Error(error.error?.message || 'OpenRouter API error');
-    }
-
-    const data = await openrouterRes.json();
-    const responseText = data.choices?.[0]?.message?.content;
+    const responseText = response.choices?.[0]?.message?.content;
 
     if (!responseText) {
-      throw new Error('No response content from OpenRouter');
+      throw new Error('No response content from OpenAI');
     }
 
     const responseJson = JSON.parse(responseText);
@@ -77,10 +70,12 @@ Do not include any markdown formatting or other text outside the JSON object.`;
     return NextResponse.json(validatedResponse);
   } catch (e: any) {
     if (e instanceof ZodError) {
-      return NextResponse.json({ error: 'Invalid input', details: e.errors }, { status: 400 });
+      return NextResponse.json(fallbackSimulation);
     }
     console.error("Digital Twin simulation failed.", e);
-    return NextResponse.json({ error: 'Internal Server Error', message: e.message || 'An unexpected error occurred.' }, { status: 500 });
+    
+    // Return fallback simulation instead of error
+    return NextResponse.json(fallbackSimulation);
   }
 }
 

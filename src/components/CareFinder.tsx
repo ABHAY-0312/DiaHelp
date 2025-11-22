@@ -36,6 +36,7 @@ export function CareFinder() {
         body: JSON.stringify({ location }),
       });
       
+
       if (!response.ok) {
         throw new Error(await response.text());
       }

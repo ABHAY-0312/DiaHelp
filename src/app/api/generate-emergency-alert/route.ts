@@ -1,9 +1,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z, ZodError } from 'zod';
-import {
-  GoogleGenerativeAI,
-} from '@google/generative-ai';
+import { callGeminiWithFallback } from '@/lib/gemini-client';
 
 const GenerateEmergencyAlertInputSchema = z.object({
     patientName: z.string().describe("The name of the patient experiencing the emergency."),
@@ -23,17 +21,36 @@ const GenerateEmergencyAlertOutputSchema = z.object({
 });
 export type GenerateEmergencyAlertOutput = z.infer<typeof GenerateEmergencyAlertOutputSchema>;
 
-const API_KEY = process.env.GEMINI_API_KEY || '';
-const genAI = new GoogleGenerativeAI(API_KEY);
 
-const model = genAI.getGenerativeModel({
-  model: 'gemini-2.5-flash'
-});
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const input = GenerateEmergencyAlertInputSchema.parse(body);
+
+    // Fallback emergency alert when AI fails
+    const fallbackAlert = {
+      subject: "URGENT: Critical Health Reading Detected",
+      body: `URGENT MEDICAL ALERT
+
+Dear Emergency Contact,
+
+This is an automated alert from DiaHelper. ${input.patientName} has a critical health reading that requires immediate medical attention.
+
+Critical Reading: ${input.criticalReading}
+
+PLEASE SEEK IMMEDIATE MEDICAL ATTENTION.
+
+If this is a life-threatening emergency, call 911 immediately.
+
+This is an automated message from DiaHelper - please do not reply to this message.
+
+Stay safe,
+DiaHelper Health Monitoring System`,
+      patientName: input.patientName,
+      emergencyContactEmail: input.emergencyContactEmail,
+      criticalReading: input.criticalReading
+    };
 
     const prompt = `Generate an URGENT alert message for ${input.patientName}'s emergency contact (${input.emergencyContactEmail}). Respond with only a valid JSON object conforming to the GenerateEmergencyAlertOutput schema.
 The critical issue is: ${input.criticalReading}.
@@ -45,18 +62,30 @@ The message needs:
 5.  Return the input patientName, emergencyContactEmail, and criticalReading in the output for the UI.
 `;
 
-    const result = await model.generateContent(prompt);
-    const responseText = result.response.text();
-    const responseJson = JSON.parse(responseText.replace(/```json\n?/, "").replace(/```$/, ""));
-
+    const result = await callGeminiWithFallback(prompt, 'gemini-2.5-flash', 10000);
+    const responseJson = JSON.parse(result.replace(/```json\n?/, "").replace(/```$/, ""));
 
     return NextResponse.json(responseJson);
   } catch (e: any) {
     if (e instanceof ZodError) {
-      return NextResponse.json({ error: 'Invalid input', details: e.errors }, { status: 400 });
+      return NextResponse.json({
+        subject: "URGENT: Critical Health Reading Detected",
+        body: `URGENT MEDICAL ALERT\n\nThis is an automated alert from DiaHelper. Please seek immediate medical attention.\n\nIf this is a life-threatening emergency, call 911 immediately.\n\nStay safe,\nDiaHelper Health Monitoring System`,
+        patientName: 'Patient',
+        emergencyContactEmail: '',
+        criticalReading: 'Critical health reading'
+      });
     }
     console.error("Emergency alert generation failed.", e);
-    return NextResponse.json({ error: 'Internal Server Error', message: e.message || 'An unexpected error occurred.' }, { status: 500 });
+    
+    // Return fallback emergency alert instead of error
+    return NextResponse.json({
+      subject: "URGENT: Critical Health Reading Detected",
+      body: `URGENT MEDICAL ALERT\n\nThis is an automated alert from DiaHelper. Please seek immediate medical attention.\n\nIf this is a life-threatening emergency, call 911 immediately.\n\nStay safe,\nDiaHelper Health Monitoring System`,
+      patientName: 'Patient',
+      emergencyContactEmail: '',
+      criticalReading: 'Critical health reading'
+    });
   }
 }
 

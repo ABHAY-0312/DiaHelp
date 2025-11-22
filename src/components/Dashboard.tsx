@@ -34,56 +34,230 @@ import { Footer } from "./Footer";
 import type { GenerateReportInput, GenerateReportOutput } from "@/app/api/generate-report/route";
 
 const calculateRisk = (data: Partial<HealthFormData>): { riskScore: number; shapValues: { name: string; value: number }[] } => {
-    const { age = 40, gender = 'female', bmi = 25, waistCircumference = 90, fastingGlucose = 100, hba1c = 5.5, fastingInsulin = 10, triglycerides = 150, hdlCholesterol = 50, bloodPressure = 80, familyHistory = 'no', sleepHours = 7, physicalActivity = 'moderate', stressLevel = 'medium' } = data;
+    const { 
+        age = 40, 
+        gender = 'female', 
+        bmi = 25, 
+        waistCircumference = 90, 
+        fastingGlucose = 100, 
+        hba1c = 5.5, 
+        fastingInsulin = 10, 
+        triglycerides = 150, 
+        hdlCholesterol = 50, 
+        bloodPressure = 80, 
+        familyHistory = 'no', 
+        sleepHours = 7, 
+        physicalActivity = 'moderate', 
+        stressLevel = 'medium' 
+    } = data;
 
+    // Return 0 for incomplete data instead of calculating with defaults
     if (!data.age || !data.bmi || !data.fastingGlucose || !data.hba1c) {
+        console.log('⚠️ Incomplete data for risk calculation - returning 0:', { 
+            hasAge: !!data.age, 
+            hasBMI: !!data.bmi, 
+            hasGlucose: !!data.fastingGlucose, 
+            hasHbA1c: !!data.hba1c 
+        });
         return { riskScore: 0, shapValues: [] };
     }
-    
-    const sigmoid = (x: number) => 1 / (1 + Math.exp(-x));
 
-    const weights = {
-        base: -8.5, hba1c: 4.8, fastingGlucose: 3.2, age: 2.9, bmi: 2.6, waistCircumference: 2.3, triglycerides: 2.0,
-        hdlCholesterol: -1.8, bloodPressure: 1.4, familyHistory: 1.7, fastingInsulin: 1.2, physicalActivity: -1.4,
-        stressLevel: 0.9, sleepHours: -0.7, gender: 0.5
-    };
+    console.log('🧮 Calculating risk with complete values:', { age, bmi, fastingGlucose, hba1c, familyHistory, physicalActivity });
 
-    const norms = {
-        hba1c: { mean: 5.7, std: 1.0 }, glucose: { mean: 100, std: 25 }, age: { mean: 50, std: 15 }, bmi: { mean: 27.5, std: 5 },
-        waist: { mean: 98, std: 12 }, trig: { mean: 150, std: 40 }, hdl: { mean: 50, std: 10 }, bp: { mean: 80, std: 15 },
-        insulin: { mean: 12, std: 8 }, sleep: { mean: 7.5, std: 1 }
-    };
-    
-    const standardize = (val: number, { mean, std }: { mean: number, std: number }) => (val - mean) / std;
-
-    const familyHistoryImpact = familyHistory === 'parent' ? 1.0 : familyHistory === 'grandparent' ? 0.5 : 0;
-    const activityImpact = physicalActivity === 'sedentary' ? 1.0 : physicalActivity === 'light' ? 0.4 : physicalActivity === 'moderate' ? -0.6 : -1.2;
-    const stressImpact = stressLevel === 'high' ? 1.0 : stressLevel === 'medium' ? 0.3 : -0.7;
-    const genderImpact = gender === 'male' ? 1.0 : 0;
-    const sleepImpact = standardize(sleepHours, norms.sleep);
-
+    let riskScore = 15; // Base risk score
     const shapValues: { name: string; value: number }[] = [];
-    shapValues.push({ name: 'HbA1c', value: standardize(hba1c, norms.hba1c) * weights.hba1c });
-    shapValues.push({ name: 'Fasting Glucose', value: standardize(fastingGlucose, norms.glucose) * weights.fastingGlucose });
-    shapValues.push({ name: 'Age', value: standardize(age, norms.age) * weights.age });
-    shapValues.push({ name: 'BMI', value: standardize(bmi, norms.bmi) * weights.bmi });
-    shapValues.push({ name: 'Waist Circumference', value: standardize(waistCircumference, norms.waist) * weights.waistCircumference });
-    shapValues.push({ name: 'Triglycerides', value: standardize(triglycerides, norms.trig) * weights.triglycerides });
-    shapValues.push({ name: 'HDL Cholesterol', value: standardize(hdlCholesterol, norms.hdl) * weights.hdlCholesterol });
-    shapValues.push({ name: 'Blood Pressure', value: standardize(bloodPressure, norms.bp) * weights.bloodPressure });
-    shapValues.push({ name: 'Fasting Insulin', value: standardize(fastingInsulin, norms.insulin) * weights.fastingInsulin });
-    shapValues.push({ name: 'Family History', value: familyHistoryImpact * weights.familyHistory });
-    shapValues.push({ name: 'Physical Activity', value: activityImpact * weights.physicalActivity });
-    shapValues.push({ name: 'Stress Level', value: stressImpact * weights.stressLevel });
-    shapValues.push({ name: 'Sleep Hours', value: sleepImpact * weights.sleepHours });
-    shapValues.push({ name: 'Gender', value: genderImpact * weights.gender });
 
-    const logOdds = weights.base + shapValues.reduce((acc, curr) => acc + curr.value, 0);
-    const score = sigmoid(logOdds) * 100;
+    // 🩸 HbA1c Analysis (Most Critical Factor - up to 40 points)
+    let hba1cRisk = 0;
+    let hba1cImpact = 0;
+    if (hba1c < 5.7) {
+        hba1cRisk = Math.max(0, (hba1c - 4.5) * 4); // 0-4.8 points for normal range
+        hba1cImpact = hba1c - 5.0;
+    } else if (hba1c < 6.5) {
+        hba1cRisk = 5 + (hba1c - 5.7) * 25; // 5-25 points for prediabetic
+        hba1cImpact = 5 + (hba1c - 5.7) * 15;
+    } else {
+        hba1cRisk = 30 + Math.min(40, (hba1c - 6.5) * 15); // 30-70 points for diabetic
+        hba1cImpact = 20 + Math.min(25, (hba1c - 6.5) * 8);
+    }
+    riskScore += hba1cRisk;
+    shapValues.push({ name: 'HbA1c', value: hba1cImpact });
+
+    // 🍬 Fasting Glucose (up to 25 points)
+    let glucoseRisk = 0;
+    let glucoseImpact = 0;
+    if (fastingGlucose < 100) {
+        glucoseRisk = Math.max(0, (fastingGlucose - 85) * 0.2); // 0-3 points for normal
+        glucoseImpact = (fastingGlucose - 90) * 0.1;
+    } else if (fastingGlucose < 126) {
+        glucoseRisk = 3 + (fastingGlucose - 100) * 0.6; // 3-18.6 points for prediabetic
+        glucoseImpact = 2 + (fastingGlucose - 100) * 0.3;
+    } else {
+        glucoseRisk = 19 + Math.min(25, (fastingGlucose - 126) * 0.2); // 19-44 points for diabetic
+        glucoseImpact = 10 + Math.min(15, (fastingGlucose - 126) * 0.1);
+    }
+    riskScore += glucoseRisk;
+    shapValues.push({ name: 'Fasting Glucose', value: glucoseImpact });
+
+    // 👥 Age Factor (up to 20 points)
+    let ageRisk = 0;
+    let ageImpact = 0;
+    if (age < 35) {
+        ageRisk = 0;
+        ageImpact = -(45 - age) * 0.1;
+    } else if (age < 45) {
+        ageRisk = (age - 35) * 0.5; // 0-5 points
+        ageImpact = (age - 40) * 0.2;
+    } else if (age < 65) {
+        ageRisk = 5 + (age - 45) * 0.4; // 5-13 points
+        ageImpact = 1 + (age - 45) * 0.25;
+    } else {
+        ageRisk = 13 + Math.min(20, (age - 65) * 0.5); // 13-33 points
+        ageImpact = 6 + Math.min(10, (age - 65) * 0.3);
+    }
+    riskScore += ageRisk;
+    shapValues.push({ name: 'Age', value: ageImpact });
+
+    // 🏋️ BMI Analysis (up to 15 points)
+    let bmiRisk = 0;
+    let bmiImpact = 0;
+    if (bmi < 18.5) {
+        bmiRisk = 3; // Underweight carries some risk
+        bmiImpact = 1;
+    } else if (bmi < 25) {
+        bmiRisk = 0; // Optimal BMI
+        bmiImpact = (bmi - 22.5) * 0.2;
+    } else if (bmi < 30) {
+        bmiRisk = (bmi - 25) * 1.5; // 0-7.5 points for overweight
+        bmiImpact = 1 + (bmi - 25) * 0.8;
+    } else if (bmi < 35) {
+        bmiRisk = 7.5 + (bmi - 30) * 1.0; // 7.5-12.5 points for obese class I
+        bmiImpact = 5 + (bmi - 30) * 1.2;
+    } else {
+        bmiRisk = 12.5 + Math.min(15, (bmi - 35) * 0.8); // 12.5-27.5 points for severe obesity
+        bmiImpact = 11 + Math.min(8, (bmi - 35) * 0.6);
+    }
+    riskScore += bmiRisk;
+    shapValues.push({ name: 'BMI', value: bmiImpact });
+
+    // 👨‍👩‍👧‍👦 Family History (up to 12 points)
+    let familyRisk = 0;
+    let familyImpact = 0;
+    if (familyHistory === 'parent') {
+        familyRisk = 12; // Direct parent significantly increases risk
+        familyImpact = 8;
+    } else if (familyHistory === 'grandparent') {
+        familyRisk = 6; // Grandparent moderately increases risk
+        familyImpact = 3;
+    } else {
+        familyRisk = 0; // No family history
+        familyImpact = -1;
+    }
+    riskScore += familyRisk;
+    shapValues.push({ name: 'Family History', value: familyImpact });
+
+    // 🏃 Physical Activity (can reduce risk by up to 8 points)
+    let activityRisk = 0;
+    let activityImpact = 0;
+    if (physicalActivity === 'sedentary') {
+        activityRisk = 8; // Significantly increases risk
+        activityImpact = 5;
+    } else if (physicalActivity === 'light') {
+        activityRisk = 3; // Slightly increases risk
+        activityImpact = 1;
+    } else if (physicalActivity === 'moderate') {
+        activityRisk = 0; // Neutral
+        activityImpact = -1;
+    } else { // active
+        activityRisk = -3; // Reduces risk
+        activityImpact = -4;
+    }
+    riskScore += activityRisk;
+    shapValues.push({ name: 'Physical Activity', value: activityImpact });
+
+    // ⚖️ Waist Circumference (up to 8 points)
+    let waistRisk = 0;
+    let waistImpact = 0;
+    const waistThreshold = gender === 'male' ? 102 : 88; // WHO guidelines
+    if (waistCircumference > waistThreshold) {
+        const excess = waistCircumference - waistThreshold;
+        waistRisk = Math.min(8, excess * 0.3); // Up to 8 points for excessive waist
+        waistImpact = Math.min(5, excess * 0.2);
+    } else {
+        waistRisk = 0;
+        waistImpact = -0.5;
+    }
+    riskScore += waistRisk;
+    shapValues.push({ name: 'Waist Circumference', value: waistImpact });
+
+    // Additional smaller factors
+    // Triglycerides (up to 4 points)
+    let trigRisk = triglycerides > 150 ? Math.min(4, (triglycerides - 150) * 0.02) : 0;
+    riskScore += trigRisk;
+    shapValues.push({ name: 'Triglycerides', value: triglycerides > 150 ? 2 + (triglycerides - 150) * 0.01 : -0.5 });
+
+    // HDL Cholesterol (protective factor, can reduce by up to 3 points)
+    const hdlThreshold = gender === 'male' ? 40 : 50;
+    let hdlRisk = hdlCholesterol < hdlThreshold ? 3 : Math.max(-2, (hdlThreshold - hdlCholesterol) * 0.1);
+    riskScore += hdlRisk;
+    shapValues.push({ name: 'HDL Cholesterol', value: hdlCholesterol < hdlThreshold ? 2 : -1 });
+
+    // Blood Pressure (up to 5 points)
+    let bpRisk = bloodPressure > 90 ? Math.min(5, (bloodPressure - 90) * 0.2) : 0;
+    riskScore += bpRisk;
+    shapValues.push({ name: 'Blood Pressure', value: bloodPressure > 90 ? 1 + (bloodPressure - 90) * 0.05 : -0.5 });
+
+    // Fasting Insulin (up to 4 points)
+    let insulinRisk = fastingInsulin > 15 ? Math.min(4, (fastingInsulin - 15) * 0.15) : 0;
+    riskScore += insulinRisk;
+    shapValues.push({ name: 'Fasting Insulin', value: fastingInsulin > 15 ? 1 + (fastingInsulin - 15) * 0.08 : 0 });
+
+    // Gender (males typically 2-3 points higher risk)
+    let genderRisk = gender === 'male' ? 3 : 0;
+    riskScore += genderRisk;
+    shapValues.push({ name: 'Gender', value: gender === 'male' ? 2 : 0 });
+
+    // Sleep (poor sleep adds 2-3 points)
+    let sleepRisk = Math.abs(sleepHours - 7.5) > 2 ? 2.5 : 0;
+    riskScore += sleepRisk;
+    shapValues.push({ name: 'Sleep Hours', value: Math.abs(sleepHours - 7.5) > 2 ? 1.5 : -0.3 });
     
-    shapValues.unshift({ name: 'Baseline', value: weights.base });
+    // Stress Level (up to 4 points)
+    let stressRisk = 0;
+    let stressImpact = 0;
+    if (stressLevel === 'high') {
+        stressRisk = 4;
+        stressImpact = 3;
+    } else if (stressLevel === 'medium') {
+        stressRisk = 1;
+        stressImpact = 0.5;
+    } else {
+        stressRisk = 0;
+        stressImpact = -0.5;
+    }
+    riskScore += stressRisk;
+    shapValues.push({ name: 'Stress Level', value: stressImpact });
 
-    return { riskScore: Math.max(5, Math.min(95, Math.round(score))), shapValues };
+    // Ensure realistic bounds (5% to 95%)
+    const finalScore = Math.max(5, Math.min(95, Math.round(riskScore)));
+    
+    console.log('🎯 Risk calculation breakdown:', {
+        baseRisk: 15,
+        hba1cRisk: hba1cRisk.toFixed(1),
+        glucoseRisk: glucoseRisk.toFixed(1),
+        ageRisk: ageRisk.toFixed(1),
+        bmiRisk: bmiRisk.toFixed(1),
+        familyRisk: familyRisk.toFixed(1),
+        activityRisk: activityRisk.toFixed(1),
+        waistRisk: waistRisk.toFixed(1),
+        totalBeforeBounds: riskScore.toFixed(1),
+        finalScore
+    });
+
+    return { 
+        riskScore: finalScore, 
+        shapValues: [{ name: 'Baseline', value: 10 }, ...shapValues] 
+    };
 };
 
 
@@ -112,8 +286,12 @@ export default function Dashboard() {
             ]);
             setPredictionHistory(history);
             setHealthLogs(logs);
+            // Only set analysisResult if we don't already have one
             if (history.length > 0 && !analysisResult) {
+                console.log('📊 Setting initial analysis result from history:', history[0].riskScore);
                 setAnalysisResult(history[0]);
+            } else if (analysisResult) {
+                console.log('📊 Preserving existing analysis result:', analysisResult.riskScore);
             }
         } else if (viewToFetch === 'history' || viewToFetch === 'progress') {
              const history = await getPredictionHistory(user.uid);
@@ -122,6 +300,8 @@ export default function Dashboard() {
              const logs = await getHealthLogs(user.uid);
              setHealthLogs(logs);
         }
+        // Important: Don't clear analysisResult when switching views
+        console.log('🔄 View switched to:', viewToFetch, 'Current analysis result:', analysisResult?.riskScore || 'None');
     } catch (error: any) {
       console.error("Error fetching dashboard data:", error);
        const errorMessage = error.message || "";
@@ -336,7 +516,12 @@ export default function Dashboard() {
         case 'progress':
             return <ProgressTracker history={predictionHistory} isLoading={isDataLoading} />
         case 'datasetAnalyzer':
-            return <DatasetAnalyzer onCalculateRisk={calculateRisk} />
+            // Pass a safe risk calculation function that warns about usage
+            const safeCalculateRisk = (data: Partial<HealthFormData>) => {
+                console.log('⚠️ DatasetAnalyzer is calling calculateRisk with data:', Object.keys(data));
+                return calculateRisk(data);
+            };
+            return <DatasetAnalyzer onCalculateRisk={safeCalculateRisk} />
         case 'nutritionHub':
             return <NutritionHub latestResult={analysisResult} />
         case 'wellnessHub':

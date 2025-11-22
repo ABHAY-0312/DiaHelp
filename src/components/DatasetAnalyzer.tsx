@@ -1,5 +1,3 @@
-
-
 "use client";
 
 import { useState, useMemo } from 'react';
@@ -27,7 +25,7 @@ const CustomTooltip = ({ active, payload }: any) => {
             <div className="p-2 bg-background border border-border rounded-lg shadow-lg text-sm">
                 <p className="font-bold text-primary">{`Risk Score: ${Math.round(data.riskScore)}`}</p>
                 <p>{`Age: ${data.age}`}</p>
-                <p>{`Glucose: ${data.fastingGlucose}`}</p>
+                <p>{`Glucose: ${data.glucose}`}</p>
                 <p>{`BMI: ${data.bmi}`}</p>
             </div>
         );
@@ -137,10 +135,20 @@ export function DatasetAnalyzer({ onCalculateRisk }: DatasetAnalyzerProps) {
         try {
             const predictions = data.map((row: any) => {
                 const parsedRow = healthFormSchema.partial().parse(row);
-                const { riskScore, shapValues } = onCalculateRisk(parsedRow);
+                const result = onCalculateRisk(parsedRow);
+                
+                // Handle both possible return formats
+                const riskScore = typeof result === 'object' && result !== null 
+                    ? result.riskScore 
+                    : typeof result === 'number' ? result : 0;
+                
+                const shapValues = typeof result === 'object' && result !== null && result.shapValues 
+                    ? result.shapValues 
+                    : [];
+                
                 return { 
                     riskScore, 
-                    fastingGlucose: parsedRow.fastingGlucose || 0, 
+                    glucose: parsedRow.fastingGlucose || 0, 
                     bmi: parsedRow.bmi || 0, 
                     age: parsedRow.age || 0,
                     shapValues
@@ -166,7 +174,7 @@ export function DatasetAnalyzer({ onCalculateRisk }: DatasetAnalyzerProps) {
         r.riskScore >= riskRange[0] && r.riskScore <= riskRange[1] &&
         r.age >= ageRange[0] && r.age <= ageRange[1] &&
         r.bmi >= bmiRange[0] && r.bmi <= bmiRange[1] &&
-        r.fastingGlucose >= glucoseRange[0] && r.fastingGlucose <= glucoseRange[1]
+        r.glucose >= glucoseRange[0] && r.glucose <= glucoseRange[1]
     );
   }, [results, riskRange, ageRange, bmiRange, glucoseRange]);
 
@@ -288,7 +296,7 @@ export function DatasetAnalyzer({ onCalculateRisk }: DatasetAnalyzerProps) {
                     <div className='grid grid-cols-1 xl:grid-cols-2 gap-8'>
                         <div>
                              <h4 className="text-lg font-semibold mb-2 text-center">Glucose vs. Risk Score</h4>
-                             <RiskScatterPlot data={filteredResults} xKey="fastingGlucose" yKey="riskScore" name="Glucose vs. Risk" />
+                             <RiskScatterPlot data={filteredResults} xKey="glucose" yKey="riskScore" name="Glucose vs. Risk" />
                         </div>
                          <div>
                             <h4 className="text-lg font-semibold mb-2 text-center">BMI vs. Risk Score</h4>
@@ -326,7 +334,7 @@ export function DatasetAnalyzer({ onCalculateRisk }: DatasetAnalyzerProps) {
                                                 <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
                                             ))}
                                         </Pie>
-                                        <Tooltip formatter={(value, name) => [value.toFixed(2), name]} />
+                                        <Tooltip formatter={(value: any, name: any) => [typeof value === 'number' ? value.toFixed(2) : value, name]} />
                                         <Legend />
                                     </PieChart>
                                 </ResponsiveContainer>
@@ -348,4 +356,3 @@ export function DatasetAnalyzer({ onCalculateRisk }: DatasetAnalyzerProps) {
     </div>
   );
 }
-

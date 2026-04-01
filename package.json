@@ -36,7 +36,7 @@
     "html2canvas": "^1.4.1",
     "jspdf": "^3.0.1",
     "lucide-react": "^0.475.0",
-    "next": "^15.3.3",
+    "next": "15.3.8",
     "next-themes": "^0.3.0",
     "papaparse": "^5.4.1",
     "react": "^18.3.1",

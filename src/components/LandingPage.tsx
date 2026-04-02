@@ -163,7 +163,7 @@ export function LandingPage() {
               <div className="flex flex-col justify-center space-y-4">
                 <div className="space-y-4">
                    <AnimatedText 
-                    text="Take Control of Your Health with DiaHelper" 
+                    text="Take Control Of Your Health With DiaHelper" 
                     el="h1"
                     className="text-4xl font-bold tracking-tighter sm:text-5xl xl:text-6xl/none"
                     />

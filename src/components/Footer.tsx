@@ -39,6 +39,10 @@ export function Footer() {
 
     return (
         <div className="text-center text-sm text-muted-foreground">
+            <p className="mx-auto max-w-xl text-xs text-muted-foreground">
+                DiaHelper is an AI-based diabetes risk calculator designed to help users monitor their health and prevent
+                diabetes through smart insights.
+            </p>
             <motion.p 
                 style={{ display: "flex", overflow: "hidden" }}
                 className="font-caveat text-xl text-foreground/80"
@@ -76,10 +80,10 @@ export function Footer() {
             </div>
             <div className="mt-3 flex items-center justify-center gap-4 text-xs">
                 <Link
-                    href="/faq"
+                    href="/terms"
                     className="transition-colors hover:text-foreground"
                 >
-                    FAQ
+                    Terms & Conditions
                 </Link>
             </div>
         </div>

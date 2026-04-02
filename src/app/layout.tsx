@@ -13,10 +13,10 @@ const siteUrl = 'https://dia-help.vercel.app';
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: 'DiaHelper - Diabetes Risk Assessment',
+    default: 'Free AI Diabetes Risk Calculator | DiaHelper',
     template: '%s | DiaHelper',
   },
-  description: 'Assess diabetes risk, track health insights, and get personalized guidance with DiaHelper.',
+  description: 'Check your diabetes risk online using AI. Analyze BMI, glucose and health data instantly with DiaHelper. Free diabetes calculator.',
   applicationName: 'DiaHelper',
   category: 'health',
   keywords: [
@@ -28,6 +28,12 @@ export const metadata: Metadata = {
     'nutrition planning',
     'fitness guidance',
     'preventive care',
+    'diabetes risk calculator online free',
+    'check diabetes risk using AI',
+    'how to check diabetes risk at home',
+    'AI diabetes checker India',
+    'free diabetes prediction tool',
+    'care finder prescription',
   ],
   alternates: {
     canonical: '/',

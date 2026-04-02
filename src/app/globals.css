@@ -42,6 +42,13 @@
     display: block;
   }
 
+  video,
+  canvas,
+  svg {
+    max-width: 100%;
+    height: auto;
+  }
+
   input,
   button,
   textarea,
@@ -135,12 +142,14 @@
 @layer base {
   * {
     @apply border-border;
+    min-width: 0;
   }
   body {
     @apply bg-background text-foreground;
     -webkit-user-select: none;
     -ms-user-select: none;
     user-select: none;
+    overflow-x: hidden;
   }
 }
 

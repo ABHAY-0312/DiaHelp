@@ -133,12 +133,12 @@ export function LandingPage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
-      <header className="px-4 lg:px-6 h-16 flex items-center shadow-sm">
+      <header className="px-4 lg:px-6 flex flex-wrap items-center gap-3 py-3 shadow-sm sm:h-16 sm:flex-nowrap sm:gap-0 sm:py-0">
         <Link href="/" className="flex items-center justify-center gap-2">
           <Logo className="h-6 w-6 text-primary" />
           <span className="text-lg font-semibold">DiaHelper</span>
         </Link>
-        <nav className="ml-auto flex items-center gap-4 sm:gap-6">
+        <nav className="w-full flex items-center justify-between gap-4 sm:ml-auto sm:w-auto sm:justify-start sm:gap-6">
           <Link
             href="/#faq"
             className="text-sm font-medium hover:underline underline-offset-4"

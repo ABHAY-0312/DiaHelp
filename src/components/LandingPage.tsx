@@ -36,11 +36,11 @@ const features = [
 ];
 
 const images = [
-    { src: '/images/front.png', blend: false },
-    { src: '/images/front2.png', blend: true },
+  { src: '/images/front.png', blend: false, alt: 'DiaHelper dashboard overview' },
+  { src: '/images/front2.png', blend: true, alt: 'DiaHelper health analytics preview' },
 ];
 
-const ImageFader = ({ image, index }: { image: { src: string, blend: boolean }, index: number }) => {
+const ImageFader = ({ image, index }: { image: { src: string, blend: boolean, alt: string }, index: number }) => {
     const [isLoaded, setIsLoaded] = useState(false);
 
     return (
@@ -55,7 +55,7 @@ const ImageFader = ({ image, index }: { image: { src: string, blend: boolean }, 
             <Image
                 src={image.src}
                 fill
-                alt="Hero Image"
+              alt={image.alt}
                 className={`object-cover ${image.blend ? 'mix-blend-multiply' : ''}`}
                 sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                 data-ai-hint="health technology abstract"
@@ -86,6 +86,12 @@ export function LandingPage() {
           <span className="text-lg font-semibold">DiaHelper</span>
         </Link>
         <nav className="ml-auto flex items-center gap-4 sm:gap-6">
+          <Link
+            href="/faq"
+            className="text-sm font-medium hover:underline underline-offset-4"
+          >
+            FAQ
+          </Link>
           <Link
             href="/login"
             className="text-sm font-medium hover:underline underline-offset-4"

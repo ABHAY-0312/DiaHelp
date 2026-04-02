@@ -74,6 +74,14 @@ export function Footer() {
                     <Linkedin className="w-5 h-5 text-muted-foreground hover:text-primary transition-colors" />
                 </Link>
             </div>
+            <div className="mt-3 flex items-center justify-center gap-4 text-xs">
+                <Link
+                    href="/faq"
+                    className="transition-colors hover:text-foreground"
+                >
+                    FAQ
+                </Link>
+            </div>
         </div>
     )
 }

@@ -138,7 +138,7 @@ export function LandingPage() {
           <Logo className="h-6 w-6 text-primary" />
           <span className="text-lg font-semibold">DiaHelper</span>
         </Link>
-        <nav className="w-full flex flex-col items-start gap-3 sm:ml-auto sm:w-auto sm:flex-row sm:items-center sm:justify-start sm:gap-6">
+        <nav className="ml-auto hidden items-center justify-start gap-6 md:flex">
           <Link
             href="/#faq"
             className="text-sm font-medium hover:underline underline-offset-4"

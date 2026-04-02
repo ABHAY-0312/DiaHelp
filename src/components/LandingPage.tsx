@@ -276,7 +276,7 @@ export function LandingPage() {
       </main>
       <footer className="w-full border-t">
         <div className="container flex flex-col items-center gap-4 px-4 py-6 text-center md:px-6">
-          <p className="text-xs text-muted-foreground">
+          <p className="w-full text-center text-xs text-muted-foreground">
             &copy; 2026 DiaHelper. All rights reserved by Abhay.
           </p>
           <Footer />

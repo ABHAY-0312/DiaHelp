@@ -44,8 +44,8 @@ export function Footer() {
                 diabetes through smart insights.
             </p>
             <motion.p 
-                style={{ display: "flex", overflow: "hidden" }}
-                className="font-caveat text-xl text-foreground/80"
+                style={{ overflow: "hidden" }}
+                className="flex w-full justify-center text-center font-caveat text-xl text-foreground/80"
                 variants={containerVariants}
                 initial="hidden"
                 animate="visible"

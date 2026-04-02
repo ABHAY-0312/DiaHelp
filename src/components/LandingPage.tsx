@@ -11,6 +11,7 @@ import { Footer } from './Footer';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AnimatedText } from './AnimatedText';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 const features = [
   {
@@ -65,6 +66,58 @@ const ImageFader = ({ image, index }: { image: { src: string, blend: boolean, al
         </motion.div>
     );
 };
+
+const faqItems = [
+  {
+    question: 'How can I check my diabetes risk online?',
+    answer:
+      'You can check your diabetes risk online using AI tools like DiaHelper by entering your BMI, glucose and lifestyle details.',
+  },
+  {
+    question: 'Is there a free diabetes risk calculator?',
+    answer: 'Yes, DiaHelper provides a free AI-powered diabetes risk calculator for instant results.',
+  },
+  {
+    question: 'What does DiaHelper do?',
+    answer:
+      'DiaHelper analyzes your health inputs to estimate diabetes risk, explains the results, and provides practical nutrition and lifestyle guidance.',
+  },
+  {
+    question: 'How accurate is the AI diabetes risk assessment?',
+    answer:
+      'DiaHelper uses AI models to provide personalized estimates. Results are informational and should be confirmed by a healthcare professional.',
+  },
+  {
+    question: 'Can I check diabetes risk at home?',
+    answer:
+      'Yes. You can check diabetes risk at home by entering basic details like BMI, glucose history, and activity level into DiaHelper.',
+  },
+  {
+    question: 'Who should use DiaHelper?',
+    answer:
+      'DiaHelper is helpful for anyone who wants early risk awareness, preventive insights, or personalized guidance to support healthier habits.',
+  },
+  {
+    question: 'Is DiaHelper an AI diabetes checker in India?',
+    answer:
+      'Yes. DiaHelper is an AI diabetes checker that can be used in India and globally to get instant risk insights based on your health inputs.',
+  },
+  {
+    question: 'Is DiaHelper a free diabetes prediction tool?',
+    answer:
+      'DiaHelper provides a free diabetes prediction tool so you can check your risk online without cost.',
+  },
+  {
+    question: 'What information do I need to use the risk calculator?',
+    answer:
+      'You can use the calculator with basic health details like BMI, age, activity level, and glucose history if available.',
+  },
+  {
+    question: 'Can DiaHelper help with preventive care?',
+    answer:
+      'Yes. DiaHelper explains your risk score and suggests nutrition and lifestyle steps that support preventive care.',
+  },
+];
 
 
 export function LandingPage() {
@@ -165,7 +218,7 @@ export function LandingPage() {
             </div>
           </div>
         </section>
-        <section className="w-full py-12 md:py-24 lg:py-32 bg-background">
+        <section className="w-full py-8 md:py-16 lg:py-20 bg-background">
           <div className="container px-4 md:px-6">
             <div className="mx-auto max-w-3xl space-y-4 text-center">
               <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl">
@@ -179,106 +232,28 @@ export function LandingPage() {
             </div>
           </div>
         </section>
-        <section id="faq" className="w-full py-12 md:py-24 lg:py-32 bg-secondary/50">
+        <section id="faq" className="w-full py-12 md:py-20 lg:py-24 bg-secondary/50">
           <div className="container px-4 md:px-6">
             <div className="mx-auto max-w-3xl space-y-8">
               <h2 className="text-3xl font-bold tracking-tighter text-center sm:text-4xl">
                 Frequently Asked Questions
               </h2>
-              <div className="space-y-6">
-                <div className="rounded-2xl border border-border bg-background/70 p-6 shadow-sm">
-                  <h3 className="text-lg font-semibold text-foreground">
-                    How can I check my diabetes risk online?
-                  </h3>
-                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                    You can check your diabetes risk online using AI tools like DiaHelper by entering your BMI, glucose
-                    and lifestyle details.
-                  </p>
-                </div>
-                <div className="rounded-2xl border border-border bg-background/70 p-6 shadow-sm">
-                  <h3 className="text-lg font-semibold text-foreground">
-                    Is there a free diabetes risk calculator?
-                  </h3>
-                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                    Yes, DiaHelper provides a free AI-powered diabetes risk calculator for instant results.
-                  </p>
-                </div>
-                <div className="rounded-2xl border border-border bg-background/70 p-6 shadow-sm">
-                  <h3 className="text-lg font-semibold text-foreground">
-                    What does DiaHelper do?
-                  </h3>
-                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                    DiaHelper analyzes your health inputs to estimate diabetes risk, explains the results, and provides
-                    practical nutrition and lifestyle guidance.
-                  </p>
-                </div>
-                <div className="rounded-2xl border border-border bg-background/70 p-6 shadow-sm">
-                  <h3 className="text-lg font-semibold text-foreground">
-                    How accurate is the AI diabetes risk assessment?
-                  </h3>
-                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                    DiaHelper uses AI models to provide personalized estimates. Results are informational and should be
-                    confirmed by a healthcare professional.
-                  </p>
-                </div>
-                <div className="rounded-2xl border border-border bg-background/70 p-6 shadow-sm">
-                  <h3 className="text-lg font-semibold text-foreground">
-                    Can I check diabetes risk at home?
-                  </h3>
-                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                    Yes. You can check diabetes risk at home by entering basic details like BMI, glucose history, and
-                    activity level into DiaHelper.
-                  </p>
-                </div>
-                <div className="rounded-2xl border border-border bg-background/70 p-6 shadow-sm">
-                  <h3 className="text-lg font-semibold text-foreground">
-                    Who should use DiaHelper?
-                  </h3>
-                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                    DiaHelper is helpful for anyone who wants early risk awareness, preventive insights, or personalized
-                    guidance to support healthier habits.
-                  </p>
-                </div>
-                <div className="rounded-2xl border border-border bg-background/70 p-6 shadow-sm">
-                  <h3 className="text-lg font-semibold text-foreground">
-                    Is DiaHelper an AI diabetes checker in India?
-                  </h3>
-                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                    Yes. DiaHelper is an AI diabetes checker that can be used in India and globally to get instant risk
-                    insights based on your health inputs.
-                  </p>
-                </div>
-                <div className="rounded-2xl border border-border bg-background/70 p-6 shadow-sm">
-                  <h3 className="text-lg font-semibold text-foreground">
-                    Is DiaHelper a free diabetes prediction tool?
-                  </h3>
-                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                    DiaHelper provides a free diabetes prediction tool so you can check your risk online without cost.
-                  </p>
-                </div>
-                <div className="rounded-2xl border border-border bg-background/70 p-6 shadow-sm">
-                  <h3 className="text-lg font-semibold text-foreground">
-                    What information do I need to use the risk calculator?
-                  </h3>
-                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                    You can use the calculator with basic health details like BMI, age, activity level, and glucose
-                    history if available.
-                  </p>
-                </div>
-                <div className="rounded-2xl border border-border bg-background/70 p-6 shadow-sm">
-                  <h3 className="text-lg font-semibold text-foreground">
-                    Can DiaHelper help with preventive care?
-                  </h3>
-                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                    Yes. DiaHelper explains your risk score and suggests nutrition and lifestyle steps that support
-                    preventive care.
-                  </p>
-                </div>
-              </div>
+              <Accordion type="single" collapsible className="rounded-2xl border border-border bg-background/70 px-6">
+                {faqItems.map((faq, index) => (
+                  <AccordionItem key={faq.question} value={`faq-${index}`}>
+                    <AccordionTrigger className="text-left text-base text-foreground">
+                      {faq.question}
+                    </AccordionTrigger>
+                    <AccordionContent className="text-muted-foreground">
+                      {faq.answer}
+                    </AccordionContent>
+                  </AccordionItem>
+                ))}
+              </Accordion>
             </div>
           </div>
         </section>
-        <section className="w-full py-12 md:py-24 lg:py-32 bg-secondary/50">
+        <section className="w-full py-8 md:py-16 lg:py-20 bg-secondary/50">
           <div className="container grid items-center justify-center gap-4 px-4 text-center md:px-6">
             <div className="space-y-3">
               <h2 className="text-3xl font-bold tracking-tighter md:text-4xl/tight">
@@ -299,10 +274,12 @@ export function LandingPage() {
           </div>
         </section>
       </main>
-      <footer className="flex flex-col gap-2 py-6 w-full shrink-0 items-center px-4 md:px-6 border-t">
-        <p className="text-xs text-muted-foreground text-center">&copy; 2026 DiaHelper. All rights reserved by Abhay.</p>
-        <div className="sm:ml-auto flex-grow flex justify-center">
-             <Footer />
+      <footer className="w-full border-t">
+        <div className="container flex flex-col items-center gap-4 px-4 py-6 text-center md:px-6">
+          <p className="text-xs text-muted-foreground">
+            &copy; 2026 DiaHelper. All rights reserved by Abhay.
+          </p>
+          <Footer />
         </div>
       </footer>
     </div>

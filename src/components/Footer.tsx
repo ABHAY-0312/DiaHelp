@@ -38,7 +38,7 @@ export function Footer() {
     };
 
     return (
-        <div className="text-center text-sm text-muted-foreground">
+        <div className="text-center text-sm text-muted-foreground space-y-3">
             <p className="mx-auto max-w-xl text-xs text-muted-foreground">
                 DiaHelper is an AI-based diabetes risk calculator designed to help users monitor their health and prevent
                 diabetes through smart insights.
